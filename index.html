@@ -1,0 +1,2034 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POP! PDF Studio — Editor de PDF Gratuito</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Plus Jakarta Sans & Space Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- PDF.js (Renderizado de páginas PDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <!-- pdf-lib (Edición estructural y exportación de PDF real) -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"Space Mono"', 'monospace'],
+                    },
+                    colors: {
+                        pop: {
+                            bg: '#FAF8F5',
+                            coral: '#FF5A5F',
+                            yellow: '#FFD166',
+                            mint: '#06D6A0',
+                            blue: '#118AB2',
+                            purple: '#8338EC',
+                            dark: '#18181B',
+                            card: '#FFFFFF'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --pop-border: 2px solid #18181B;
+            --pop-shadow: 4px 4px 0px #18181B;
+            --pop-shadow-sm: 2px 2px 0px #18181B;
+            --pop-shadow-lg: 6px 6px 0px #18181B;
+            --spring-easing: cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background-color: #FAF8F5;
+            background-image: radial-gradient(#18181B 1px, transparent 1px);
+            background-size: 24px 24px;
+            color: #18181B;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow: hidden;
+        }
+
+        /* Pop Minimalist Surface & Buttons */
+        .pop-box {
+            background: #FFFFFF;
+            border: var(--pop-border);
+            box-shadow: var(--pop-shadow);
+            border-radius: 16px;
+            transition: transform 0.25s var(--spring-easing), box-shadow 0.25s var(--spring-easing), background-color 0.15s ease;
+        }
+
+        .pop-box-sm {
+            background: #FFFFFF;
+            border: var(--pop-border);
+            box-shadow: var(--pop-shadow-sm);
+            border-radius: 12px;
+            transition: transform 0.22s var(--spring-easing), box-shadow 0.22s var(--spring-easing), background-color 0.15s ease;
+        }
+
+        .pop-btn {
+            border: var(--pop-border);
+            box-shadow: var(--pop-shadow-sm);
+            border-radius: 12px;
+            font-weight: 700;
+            transition: transform 0.2s var(--spring-easing), box-shadow 0.2s var(--spring-easing), background-color 0.15s ease;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .pop-btn:hover:not(:disabled) {
+            transform: translate(-2px, -2px);
+            box-shadow: 4px 4px 0px #18181B;
+        }
+
+        .pop-btn:active:not(:disabled),
+        .pop-btn.active-press {
+            transform: translate(2px, 2px) !important;
+            box-shadow: 0px 0px 0px #18181B !important;
+        }
+
+        .pop-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        /* Tool button active state */
+        .tool-btn.active {
+            background-color: #FFD166 !important;
+            transform: translate(1px, 1px);
+            box-shadow: 1px 1px 0px #18181B;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FAF8F5;
+            border-left: 2px solid #18181B;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #18181B;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #FF5A5F;
+        }
+
+        /* PDF Page Container & Overlay Layer */
+        .pdf-page-wrapper {
+            position: relative;
+            margin: 0 auto 32px auto;
+            background: white;
+            border: 2px solid #18181B;
+            box-shadow: 8px 8px 0px rgba(24, 24, 27, 0.9);
+            border-radius: 6px;
+            transition: transform 0.25s var(--spring-easing);
+        }
+
+        .annotation-layer {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: auto;
+        }
+
+        /* Individual Annotations */
+        .anno-item {
+            position: absolute;
+            cursor: grab;
+            transition: box-shadow 0.15s ease;
+            user-select: none;
+        }
+        .anno-item:active {
+            cursor: grabbing;
+        }
+        .anno-item.selected {
+            outline: 2.5px dashed #FF5A5F;
+            outline-offset: 4px;
+            z-index: 40;
+        }
+        .anno-text-editable {
+            user-select: text;
+            cursor: text;
+            min-width: 60px;
+            min-height: 24px;
+            outline: none;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.25;
+            padding: 4px 6px;
+        }
+
+        /* Resize Handle */
+        .resize-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #FFD166;
+            border: 2px solid #18181B;
+            border-radius: 50%;
+            right: -8px;
+            bottom: -8px;
+            cursor: nwse-resize;
+            display: none;
+            z-index: 50;
+            transition: transform 0.15s var(--spring-easing);
+        }
+        .resize-handle:hover {
+            transform: scale(1.3);
+            background: #FF5A5F;
+        }
+        .anno-item.selected .resize-handle {
+            display: block;
+        }
+
+        /* Delete Floating Pill on Selected Item */
+        .anno-delete-btn {
+            position: absolute;
+            top: -14px;
+            right: -14px;
+            width: 24px;
+            height: 24px;
+            background: #FF5A5F;
+            color: white;
+            border: 2px solid #18181B;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 55;
+            box-shadow: 2px 2px 0px #18181B;
+            transition: transform 0.15s var(--spring-easing);
+        }
+        .anno-delete-btn:hover {
+            transform: scale(1.2);
+        }
+        .anno-item.selected .anno-delete-btn {
+            display: flex;
+        }
+
+        /* Pop Modal Animation */
+        .modal-backdrop {
+            background: rgba(24, 24, 27, 0.55);
+            backdrop-filter: blur(4px);
+        }
+        .pop-modal-enter {
+            animation: popIn 0.32s var(--spring-easing) forwards;
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.86) translateY(12px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Thumbnail Active Card */
+        .thumb-card.active {
+            border-color: #18181B;
+            background-color: #FFD166;
+            box-shadow: 4px 4px 0px #18181B;
+            transform: translate(-2px, -2px);
+        }
+
+        /* Range Input Pop Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 10px;
+            background: #FAF8F5;
+            border: 2px solid #18181B;
+            border-radius: 999px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #FF5A5F;
+            border: 2px solid #18181B;
+            box-shadow: 2px 2px 0px #18181B;
+            cursor: pointer;
+            transition: transform 0.15s var(--spring-easing);
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col select-none">
+
+    <!-- TOP HEADER BAR -->
+    <header class="h-16 bg-white border-b-2 border-pop-dark px-4 flex items-center justify-between z-30 shrink-0">
+        <!-- Brand Logo -->
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-pop-coral border-2 border-pop-dark flex items-center justify-center shadow-[3px_3px_0px_#18181B] rotate-[-3deg] hover:rotate-0 transition-transform">
+                <i data-lucide="file-pen-line" class="w-5 h-5 text-white stroke-[2.5]"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-extrabold text-lg tracking-tight leading-none">POP! PDF</h1>
+                    <span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 bg-pop-yellow border border-pop-dark rounded-full">Studio v2.5</span>
+                </div>
+                <p id="docNameDisplay" class="text-xs text-zinc-500 font-medium truncate max-w-[180px] sm:max-w-[260px]">Sin documento cargado</p>
+            </div>
+        </div>
+
+        <!-- Center Tool Ribbon (Main Acrobat Tools) -->
+        <div id="mainToolbar" class="hidden md:flex items-center gap-1.5 bg-pop-bg p-1.5 rounded-2xl border-2 border-pop-dark shadow-[3px_3px_0px_#18181B]">
+            <button onclick="setActiveTool('select')" data-tool="select" class="tool-btn pop-btn bg-white px-3 py-1.5 text-xs active" title="Seleccionar y Mover (V)">
+                <i data-lucide="mouse-pointer" class="w-4 h-4"></i>
+                <span class="hidden lg:inline">Seleccionar</span>
+            </button>
+            <button onclick="setActiveTool('text')" data-tool="text" class="tool-btn pop-btn bg-white px-3 py-1.5 text-xs" title="Añadir Texto (T)">
+                <i data-lucide="type" class="w-4 h-4 text-pop-blue"></i>
+                <span class="hidden lg:inline">Texto</span>
+            </button>
+            <button onclick="setActiveTool('highlight')" data-tool="highlight" class="tool-btn pop-btn bg-white px-3 py-1.5 text-xs" title="Resaltador (H)">
+                <i data-lucide="highlighter" class="w-4 h-4 text-amber-500"></i>
+                <span class="hidden lg:inline">Resaltar</span>
+            </button>
+            <button onclick="setActiveTool('draw')" data-tool="draw" class="tool-btn pop-btn bg-white px-3 py-1.5 text-xs" title="Dibujo Libre (D)">
+                <i data-lucide="pen-tool" class="w-4 h-4 text-pop-coral"></i>
+                <span class="hidden lg:inline">Dibujar</span>
+            </button>
+            <button onclick="openSignatureModal()" data-tool="signature" class="tool-btn pop-btn bg-white px-3 py-1.5 text-xs" title="Crear o Insertar Firma">
+                <i data-lucide="signature" class="w-4 h-4 text-pop-purple"></i>
+                <span class="hidden lg:inline">Firmar</span>
+            </button>
+            <button onclick="setActiveTool('stamp')" data-tool="stamp" class="tool-btn pop-btn bg-white px-3 py-1.5 text-xs" title="Sellos y Formas">
+                <i data-lucide="sticker" class="w-4 h-4 text-pop-mint"></i>
+                <span class="hidden lg:inline">Sellos</span>
+            </button>
+            <button onclick="triggerImageUpload()" data-tool="image" class="tool-btn pop-btn bg-white px-3 py-1.5 text-xs" title="Insertar Imagen">
+                <i data-lucide="image-plus" class="w-4 h-4 text-pink-500"></i>
+                <span class="hidden lg:inline">Imagen</span>
+            </button>
+        </div>
+
+        <!-- Right Action Buttons -->
+        <div class="flex items-center gap-2">
+            <button onclick="openGithubModal()" class="pop-btn bg-pop-bg hover:bg-pop-yellow px-3 py-2 text-xs hidden sm:inline-flex" title="Cómo alojar gratis en GitHub Pages">
+                <i data-lucide="github" class="w-4 h-4"></i>
+                <span class="hidden xl:inline">GitHub Pages</span>
+            </button>
+
+            <label for="pdfUploadInput" class="pop-btn bg-white hover:bg-zinc-100 px-3 py-2 text-xs cursor-pointer">
+                <i data-lucide="folder-open" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Abrir PDF</span>
+            </label>
+            <input id="pdfUploadInput" type="file" accept="application/pdf" class="hidden" onchange="handleFileUpload(event)">
+            <input id="imageUploadInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="handleImageUpload(event)">
+
+            <button id="exportBtn" onclick="exportFinalPDF()" disabled class="pop-btn bg-pop-mint text-pop-dark px-4 py-2 text-xs font-extrabold">
+                <i data-lucide="download" class="w-4 h-4 stroke-[2.5]"></i>
+                <span>Descargar PDF</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MOBILE TOOL RIBBON (Shown on small screens) -->
+    <div class="flex md:hidden items-center justify-around bg-white border-b-2 border-pop-dark py-2 px-2 z-20 overflow-x-auto gap-1 shrink-0">
+        <button onclick="setActiveTool('select')" data-tool="select" class="tool-btn pop-btn bg-white p-2 text-xs active"><i data-lucide="mouse-pointer" class="w-4 h-4"></i></button>
+        <button onclick="setActiveTool('text')" data-tool="text" class="tool-btn pop-btn bg-white p-2 text-xs"><i data-lucide="type" class="w-4 h-4 text-pop-blue"></i></button>
+        <button onclick="setActiveTool('highlight')" data-tool="highlight" class="tool-btn pop-btn bg-white p-2 text-xs"><i data-lucide="highlighter" class="w-4 h-4 text-amber-500"></i></button>
+        <button onclick="setActiveTool('draw')" data-tool="draw" class="tool-btn pop-btn bg-white p-2 text-xs"><i data-lucide="pen-tool" class="w-4 h-4 text-pop-coral"></i></button>
+        <button onclick="openSignatureModal()" class="tool-btn pop-btn bg-white p-2 text-xs"><i data-lucide="signature" class="w-4 h-4 text-pop-purple"></i></button>
+        <button onclick="setActiveTool('stamp')" data-tool="stamp" class="tool-btn pop-btn bg-white p-2 text-xs"><i data-lucide="sticker" class="w-4 h-4 text-pop-mint"></i></button>
+        <button onclick="triggerImageUpload()" class="tool-btn pop-btn bg-white p-2 text-xs"><i data-lucide="image-plus" class="w-4 h-4 text-pink-500"></i></button>
+    </div>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- LEFT SIDEBAR: PAGE THUMBNAILS & MANAGEMENT -->
+        <aside id="leftSidebar" class="w-60 bg-white border-r-2 border-pop-dark flex flex-col shrink-0 z-20 transition-all duration-300 hidden sm:flex">
+            <div class="p-3 border-b-2 border-pop-dark flex items-center justify-between bg-pop-bg">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="layers" class="w-4 h-4"></i>
+                    <span class="font-extrabold text-xs uppercase tracking-wider">Páginas (<span id="pageCountBadge">0</span>)</span>
+                </div>
+                <button onclick="addBlankPage()" id="addBlankPageBtn" disabled class="pop-btn bg-pop-yellow px-2.5 py-1 text-xs" title="Insertar página en blanco al final">
+                    <i data-lucide="plus" class="w-3.5 h-3.5 stroke-[3]"></i> Nueva
+                </button>
+            </div>
+
+            <!-- Thumbnails Scroll List -->
+            <div id="thumbnailsContainer" class="flex-1 overflow-y-auto p-3 space-y-4">
+                <div class="text-center py-12 px-4 text-zinc-400 text-xs">
+                    Carga un archivo PDF o genera uno de prueba para gestionar sus páginas aquí.
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER VIEWPORT: PDF CANVAS & EMPTY DROPZONE -->
+        <section class="flex-1 flex flex-col relative overflow-hidden">
+            
+            <!-- EMPTY STATE / WELCOME DROPZONE -->
+            <div id="emptyStateView" class="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+                <div id="dropZoneCard" class="pop-box max-w-xl w-full p-8 sm:p-10 text-center bg-white relative">
+                    <!-- Decorative Corner Pill -->
+                    <div class="absolute -top-4 -right-4 bg-pop-yellow border-2 border-pop-dark px-3 py-1 rounded-full font-mono text-xs font-bold shadow-[3px_3px_0px_#18181B] rotate-6">
+                        100% PRIVADO EN TU NAVEGADOR
+                    </div>
+
+                    <div class="w-20 h-20 mx-auto mb-6 rounded-3xl bg-pop-coral border-2 border-pop-dark shadow-[4px_4px_0px_#18181B] flex items-center justify-center">
+                        <i data-lucide="file-up" class="w-10 h-10 text-white stroke-[2.2]"></i>
+                    </div>
+
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">Edita tus PDFs con estilo Pop</h2>
+                    <p class="text-sm text-zinc-600 mb-8 max-w-md mx-auto">
+                        Añade textos, firmas dibujadas a mano, resaltados, sellos, imágenes, rota o elimina páginas sin subir tus archivos a ningún servidor.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <label for="pdfUploadInput" class="pop-btn bg-pop-coral text-white px-6 py-3.5 text-sm w-full sm:w-auto cursor-pointer">
+                            <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                            <span>Seleccionar archivo PDF</span>
+                        </label>
+
+                        <button onclick="generateSamplePDF()" class="pop-btn bg-pop-yellow text-pop-dark px-6 py-3.5 text-sm w-full sm:w-auto">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                            <span>Cargar PDF de Prueba</span>
+                        </button>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t-2 border-dashed border-zinc-200 grid grid-cols-3 gap-3 text-left">
+                        <div class="p-3 rounded-xl bg-pop-bg border border-zinc-300">
+                            <div class="font-bold text-xs flex items-center gap-1.5 mb-1">
+                                <i data-lucide="shield-check" class="w-4 h-4 text-pop-mint"></i> Sin Servidores
+                            </div>
+                            <p class="text-[11px] text-zinc-500">Tus documentos nunca salen de tu computadora.</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-pop-bg border border-zinc-300">
+                            <div class="font-bold text-xs flex items-center gap-1.5 mb-1">
+                                <i data-lucide="pen-tool" class="w-4 h-4 text-pop-coral"></i> Firma e Imágenes
+                            </div>
+                            <p class="text-[11px] text-zinc-500">Estampa tu firma real y exporta al instante.</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-pop-bg border border-zinc-300">
+                            <div class="font-bold text-xs flex items-center gap-1.5 mb-1">
+                                <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i> 100% Gratis
+                            </div>
+                            <p class="text-[11px] text-zinc-500">Sin marcas de agua ni límites de descargas.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACTIVE DOCUMENT SCROLL CANVAS -->
+            <div id="workspaceScroll" class="hidden flex-1 overflow-auto p-4 sm:p-8 pb-28">
+                <div id="pagesRenderContainer" class="flex flex-col items-center">
+                    <!-- Dynamic PDF pages + interactive layers injected here -->
+                </div>
+            </div>
+
+            <!-- FLOATING BOTTOM NAVIGATION & ZOOM BAR -->
+            <div id="floatingBottomBar" class="hidden absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-white px-3 py-2 rounded-2xl border-2 border-pop-dark shadow-[4px_4px_0px_#18181B]">
+                <button onclick="toggleLeftSidebar()" class="pop-btn bg-pop-bg px-2.5 py-1.5 text-xs sm:hidden" title="Ver páginas">
+                    <i data-lucide="layers" class="w-4 h-4"></i>
+                </button>
+
+                <button onclick="changeZoom(-0.15)" class="pop-btn bg-pop-bg px-2.5 py-1.5 text-xs" title="Alejar Zoom">
+                    <i data-lucide="zoom-out" class="w-4 h-4"></i>
+                </button>
+                <span id="zoomLabel" class="font-mono font-bold text-xs min-w-[52px] text-center">100%</span>
+                <button onclick="changeZoom(0.15)" class="pop-btn bg-pop-bg px-2.5 py-1.5 text-xs" title="Acercar Zoom">
+                    <i data-lucide="zoom-in" class="w-4 h-4"></i>
+                </button>
+                <button onclick="resetZoom()" class="pop-btn bg-pop-bg px-2.5 py-1.5 text-xs" title="Ajustar al 100%">
+                    1:1
+                </button>
+
+                <div class="h-5 w-[2px] bg-pop-dark mx-1"></div>
+
+                <button onclick="undoLastAction()" id="undoBtn" disabled class="pop-btn bg-pop-bg px-2.5 py-1.5 text-xs" title="Deshacer última anotación (Ctrl+Z)">
+                    <i data-lucide="undo-2" class="w-4 h-4"></i>
+                </button>
+                <button onclick="clearCurrentPageAnnotations()" class="pop-btn bg-pop-bg hover:bg-red-100 px-2.5 py-1.5 text-xs text-pop-coral" title="Limpiar elementos de la página actual">
+                    <i data-lucide="eraser" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- RIGHT SIDEBAR: CONTEXTUAL PROPERTIES INSPECTOR -->
+        <aside class="w-72 bg-white border-l-2 border-pop-dark flex flex-col shrink-0 z-20 hidden lg:flex">
+            <div class="p-3 border-b-2 border-pop-dark bg-pop-bg flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="SlidersHorizontal" class="w-4 h-4"></i>
+                    <span class="font-extrabold text-xs uppercase tracking-wider">Propiedades y Estilo</span>
+                </div>
+                <span id="activeToolBadge" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-pop-yellow border border-pop-dark">
+                    Seleccionar
+                </span>
+            </div>
+
+            <div class="p-4 space-y-6 overflow-y-auto flex-1">
+                <!-- Instructions Banner for Active Tool -->
+                <div id="toolHelperBanner" class="p-3 rounded-xl bg-pop-bg border-2 border-pop-dark text-xs leading-relaxed">
+                    <p class="font-bold mb-1 flex items-center gap-1.5">
+                        <i data-lucide="info" class="w-4 h-4 text-pop-blue shrink-0"></i>
+                        <span id="helperTitle">Modo Selección</span>
+                    </p>
+                    <p id="helperDesc" class="text-zinc-600">Haz clic sobre cualquier texto, firma, sello o imagen para moverlo, cambiar su estilo o eliminarlo.</p>
+                </div>
+
+                <!-- Color Palette Picker -->
+                <div>
+                    <label class="block font-extrabold text-xs uppercase tracking-wider mb-2.5">Color Principal</label>
+                    <div class="grid grid-cols-6 gap-2" id="colorSwatches">
+                        <button onclick="setInspectorColor('#18181B')" data-color="#18181B" class="color-swatch w-8 h-8 rounded-lg border-2 border-pop-dark bg-[#18181B] shadow-[2px_2px_0px_#18181B] ring-2 ring-offset-2 ring-pop-coral"></button>
+                        <button onclick="setInspectorColor('#FF5A5F')" data-color="#FF5A5F" class="color-swatch w-8 h-8 rounded-lg border-2 border-pop-dark bg-[#FF5A5F] shadow-[2px_2px_0px_#18181B]"></button>
+                        <button onclick="setInspectorColor('#118AB2')" data-color="#118AB2" class="color-swatch w-8 h-8 rounded-lg border-2 border-pop-dark bg-[#118AB2] shadow-[2px_2px_0px_#18181B]"></button>
+                        <button onclick="setInspectorColor('#06D6A0')" data-color="#06D6A0" class="color-swatch w-8 h-8 rounded-lg border-2 border-pop-dark bg-[#06D6A0] shadow-[2px_2px_0px_#18181B]"></button>
+                        <button onclick="setInspectorColor('#FFD166')" data-color="#FFD166" class="color-swatch w-8 h-8 rounded-lg border-2 border-pop-dark bg-[#FFD166] shadow-[2px_2px_0px_#18181B]"></button>
+                        <button onclick="setInspectorColor('#8338EC')" data-color="#8338EC" class="color-swatch w-8 h-8 rounded-lg border-2 border-pop-dark bg-[#8338EC] shadow-[2px_2px_0px_#18181B]"></button>
+                    </div>
+                </div>
+
+                <!-- Font Size & Bold Control -->
+                <div id="textControlsGroup" class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="font-extrabold text-xs uppercase tracking-wider">Tamaño de Texto</label>
+                        <span id="fontSizeValue" class="font-mono text-xs font-bold bg-pop-bg px-2 py-0.5 rounded border border-pop-dark">18px</span>
+                    </div>
+                    <input id="fontSizeSlider" type="range" min="10" max="56" value="18" oninput="updateFontSize(this.value)">
+                    
+                    <div class="pt-1 flex gap-2">
+                        <button id="boldToggleBtn" onclick="toggleTextBold()" class="pop-btn bg-white flex-1 py-2 text-xs">
+                            <i data-lucide="bold" class="w-4 h-4"></i> Negrita
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stroke Width Control -->
+                <div id="strokeControlsGroup" class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="font-extrabold text-xs uppercase tracking-wider">Grosor del Trazo</label>
+                        <span id="strokeWidthValue" class="font-mono text-xs font-bold bg-pop-bg px-2 py-0.5 rounded border border-pop-dark">4px</span>
+                    </div>
+                    <input id="strokeWidthSlider" type="range" min="2" max="20" value="4" oninput="updateStrokeWidth(this.value)">
+                </div>
+
+                <!-- Stamp / Sticker Quick Picker -->
+                <div id="stampPickerGroup" class="space-y-2.5">
+                    <label class="block font-extrabold text-xs uppercase tracking-wider">Sellos Pop Rápidos</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="selectStampPreset('APROBADO', '#06D6A0')" class="pop-btn bg-[#06D6A0] text-pop-dark py-2 px-2 text-[11px] font-mono">✓ APROBADO</button>
+                        <button onclick="selectStampPreset('URGENTE', '#FF5A5F')" class="pop-btn bg-[#FF5A5F] text-white py-2 px-2 text-[11px] font-mono">! URGENTE</button>
+                        <button onclick="selectStampPreset('REVISADO', '#FFD166')" class="pop-btn bg-[#FFD166] text-pop-dark py-2 px-2 text-[11px] font-mono">★ REVISADO</button>
+                        <button onclick="selectStampPreset('CONFIDENCIAL', '#118AB2')" class="pop-btn bg-[#118AB2] text-white py-2 px-2 text-[11px] font-mono">🔒 SECRETO</button>
+                        <button onclick="selectStampPreset('✓', '#06D6A0')" class="pop-btn bg-white text-pop-dark py-2 px-2 text-sm font-extrabold">✓ Check</button>
+                        <button onclick="selectStampPreset('✗', '#FF5A5F')" class="pop-btn bg-white text-pop-dark py-2 px-2 text-sm font-extrabold">✗ Cruz</button>
+                    </div>
+                </div>
+
+                <!-- Selected Element Actions -->
+                <div id="selectedItemActions" class="hidden pt-4 border-t-2 border-dashed border-zinc-200 space-y-2">
+                    <label class="block font-extrabold text-xs uppercase tracking-wider text-pop-coral">Elemento Seleccionado</label>
+                    <div class="flex gap-2">
+                        <button onclick="duplicateSelectedAnnotation()" class="pop-btn bg-pop-bg flex-1 py-2 text-xs">
+                            <i data-lucide="copy" class="w-4 h-4"></i> Duplicar
+                        </button>
+                        <button onclick="deleteSelectedAnnotation()" class="pop-btn bg-pop-coral text-white flex-1 py-2 text-xs">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Status -->
+            <div class="p-3 border-t-2 border-pop-dark bg-pop-bg text-[11px] text-zinc-600 flex items-center justify-between font-mono">
+                <span>MOTOR: PDF-LIB + PDF.JS</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-pop-mint border border-pop-dark inline-block"></span>
+            </div>
+        </aside>
+    </main>
+
+    <!-- SIGNATURE MODAL PAD -->
+    <div id="signatureModal" class="hidden fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
+        <div class="pop-box max-w-md w-full p-6 bg-white pop-modal-enter">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-pop-purple text-white border-2 border-pop-dark flex items-center justify-center">
+                        <i data-lucide="signature" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="font-extrabold text-lg">Dibuja tu Firma</h3>
+                </div>
+                <button onclick="closeSignatureModal()" class="pop-btn bg-pop-bg p-1.5">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-zinc-600 mb-3">Usa tu ratón o pantalla táctil para firmar en el recuadro inferior:</p>
+
+            <div class="border-2 border-pop-dark rounded-xl overflow-hidden bg-[#FAF8F5] shadow-inner mb-4 relative">
+                <canvas id="signaturePadCanvas" width="400" height="180" class="w-full h-[180px] cursor-crosshair touch-none"></canvas>
+                <div class="absolute bottom-3 left-6 right-6 border-b-2 border-dashed border-zinc-300 pointer-events-none"></div>
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-1.5">
+                    <button onclick="setSigColor('#18181B')" class="w-6 h-6 rounded-full bg-[#18181B] border-2 border-pop-dark"></button>
+                    <button onclick="setSigColor('#118AB2')" class="w-6 h-6 rounded-full bg-[#118AB2] border-2 border-pop-dark"></button>
+                    <button onclick="setSigColor('#FF5A5F')" class="w-6 h-6 rounded-full bg-[#FF5A5F] border-2 border-pop-dark"></button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="clearSignaturePad()" class="pop-btn bg-white px-3 py-2 text-xs">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Limpiar
+                    </button>
+                    <button onclick="saveAndInsertSignature()" class="pop-btn bg-pop-mint px-4 py-2 text-xs">
+                        <i data-lucide="check" class="w-4 h-4 stroke-[2.5]"></i> Insertar Firma
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GITHUB PAGES INSTRUCTIONS MODAL -->
+    <div id="githubModal" class="hidden fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
+        <div class="pop-box max-w-lg w-full p-6 bg-white pop-modal-enter">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-pop-yellow border-2 border-pop-dark flex items-center justify-center">
+                        <i data-lucide="github" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="font-extrabold text-lg">Cómo subir tu Editor a GitHub Pages</h3>
+                </div>
+                <button onclick="closeGithubModal()" class="pop-btn bg-pop-bg p-1.5">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 text-xs text-zinc-700 leading-relaxed">
+                <div class="p-3 rounded-xl bg-pop-bg border-2 border-pop-dark">
+                    <span class="font-mono font-bold text-pop-coral">PASO 1:</span> Guarda este código como un único archivo llamado <code class="bg-white px-1.5 py-0.5 rounded border border-pop-dark font-mono">index.html</code>.
+                </div>
+                <div class="p-3 rounded-xl bg-pop-bg border-2 border-pop-dark">
+                    <span class="font-mono font-bold text-pop-blue">PASO 2:</span> Entra a tu cuenta de <strong>GitHub.com</strong>, crea un repositorio nuevo (por ejemplo <code class="font-mono">mi-editor-pdf</code>) y sube el archivo <code class="font-mono">index.html</code>.
+                </div>
+                <div class="p-3 rounded-xl bg-pop-bg border-2 border-pop-dark">
+                    <span class="font-mono font-bold text-pop-mint">PASO 3:</span> Ve a <strong>Settings → Pages</strong> en tu repositorio, selecciona la rama <code class="font-mono">main</code> y pulsa <strong>Save</strong>. ¡En 1 minuto tendrás tu propio enlace web gratuito para siempre!
+                </div>
+            </div>
+
+            <div class="mt-5 flex justify-end">
+                <button onclick="closeGithubModal()" class="pop-btn bg-pop-yellow px-5 py-2 text-xs">
+                    ¡Entendido, genial!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // Configure PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // --- APPLICATION STATE ---
+        let rawPdfBytes = null;          // Uint8Array of current working PDF
+        let pdfJsDoc = null;             // PDF.js loaded document instance
+        let currentDocName = 'documento-editado.pdf';
+        let currentZoom = 1.0;
+        let activeTool = 'select';       // 'select', 'text', 'highlight', 'draw', 'stamp'
+        let currentPageIndex = 0;        // 0-based active page
+
+        // Virtual Page Structure & Annotations State
+        // Each item in pagesState represents a page in the current document:
+        // { id, rotation: 0, annotations: [ { id, type, x, y, width, height, text, color, fontSize, bold, points, strokeWidth, dataUrl } ] }
+        let pagesState = [];
+        let selectedAnnotationId = null;
+        let undoStack = [];
+
+        // Inspector Defaults
+        let inspectorState = {
+            color: '#18181B',
+            fontSize: 18,
+            bold: false,
+            strokeWidth: 4,
+            stampText: 'APROBADO',
+            stampColor: '#06D6A0'
+        };
+
+        // Signature Pad State
+        let sigPadCtx = null;
+        let isDrawingSig = false;
+        let sigStrokeColor = '#18181B';
+
+        // Initialize Icons & Drag-and-Drop on load
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            setupDragAndDrop();
+            initSignaturePad();
+            setupKeyboardShortcuts();
+        });
+
+        function showToast(message, bgColor = 'bg-pop-yellow') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `pop-box-sm ${bgColor} px-4 py-2.5 text-xs font-extrabold text-pop-dark flex items-center gap-2 pointer-events-auto pop-modal-enter`;
+            toast.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons({ nodes: [toast] });
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => toast.remove(), 250);
+            }, 3000);
+        }
+
+        function openGithubModal() {
+            document.getElementById('githubModal').classList.remove('hidden');
+        }
+        function closeGithubModal() {
+            document.getElementById('githubModal').classList.add('hidden');
+        }
+        function toggleLeftSidebar() {
+            const sb = document.getElementById('leftSidebar');
+            sb.classList.toggle('hidden');
+            sb.classList.toggle('fixed');
+            sb.classList.toggle('inset-y-16');
+            sb.classList.toggle('left-0');
+        }
+
+        async function generateSamplePDF() {
+            try {
+                showToast('Generando PDF interactivo de prueba...', 'bg-pop-yellow');
+                const { PDFDocument, StandardFonts, rgb } = PDFLib;
+                const pdfDoc = await PDFDocument.create();
+                const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+                // Page 1: Contract / Guide Page
+                const page1 = pdfDoc.addPage([595.28, 841.89]); // A4
+                const { width, height } = page1.getSize();
+
+                // Header Banner
+                page1.drawRectangle({
+                    x: 40, y: height - 120, width: width - 80, height: 75,
+                    color: rgb(1, 0.82, 0.4),
+                    borderColor: rgb(0.09, 0.09, 0.1),
+                    borderWidth: 2
+                });
+
+                page1.drawText('POP! PDF STUDIO — DOCUMENTO DEMO', {
+                    x: 60, y: height - 78, size: 18, font: fontBold, color: rgb(0.09, 0.09, 0.1)
+                });
+                page1.drawText('Prueba todas las herramientas tipo Adobe Acrobat directamente aqui.', {
+                    x: 60, y: height - 100, size: 11, font: fontRegular, color: rgb(0.2, 0.2, 0.2)
+                });
+
+                // Document Body Text
+                const lines = [
+                    '1. PRUEBA LA HERRAMIENTA DE TEXTO:',
+                    '   Selecciona "Texto" en la barra superior y haz clic en cualquier lugar',
+                    '   de la hoja para escribir, cambiar colores o ajustar el tamano.',
+                    '',
+                    '2. RESALTADOR Y DIBUJO A MANO ALZADA:',
+                    '   Usa la herramienta "Resaltar" para marcar parrafos importantes en amarillo,',
+                    '   coral o menta. Usa "Dibujar" para hacer anotaciones libres sobre el documento.',
+                    '',
+                    '3. FIRMA ELECTRONICA Y SELLOS POP:',
+                    '   Haz clic en "Firmar" para abrir el panel de firma y colocar tu rubrica',
+                    '   en el recuadro inferior de este contrato.',
+                ];
+
+                let textY = height - 170;
+                lines.forEach(line => {
+                    const isHeader = line.match(/^[123]\./);
+                    page1.drawText(line, {
+                        x: 50,
+                        y: textY,
+                        size: isHeader ? 12 : 11,
+                        font: isHeader ? fontBold : fontRegular,
+                        color: rgb(0.12, 0.12, 0.15)
+                    });
+                    textY -= 22;
+                });
+
+                // Invoice / Table Sample Box
+                page1.drawRectangle({
+                    x: 50, y: 270, width: width - 100, height: 140,
+                    color: rgb(0.98, 0.97, 0.96),
+                    borderColor: rgb(0.09, 0.09, 0.1),
+                    borderWidth: 1.5
+                });
+                page1.drawText('RESUMEN DE PROYECTO CREATIVO', {
+                    x: 70, y: 382, size: 12, font: fontBold, color: rgb(0.09, 0.09, 0.1)
+                });
+                page1.drawText('Concepto                                          Estado                Importe', {
+                    x: 70, y: 355, size: 10, font: fontBold, color: rgb(0.3, 0.3, 0.3)
+                });
+                page1.drawText('Diseno de Interfaz Pop Minimalista                Completado            $1,200.00', {
+                    x: 70, y: 330, size: 10, font: fontRegular, color: rgb(0.1, 0.1, 0.1)
+                });
+                page1.drawText('Integracion de Motor PDF Client-Side              Completado              $950.00', {
+                    x: 70, y: 308, size: 10, font: fontRegular, color: rgb(0.1, 0.1, 0.1)
+                });
+                page1.drawText('TOTAL APROBADO:                                                         $2,150.00', {
+                    x: 70, y: 284, size: 11, font: fontBold, color: rgb(0.09, 0.09, 0.1)
+                });
+
+                // Signature Box
+                page1.drawRectangle({
+                    x: 50, y: 90, width: 230, height: 110,
+                    color: rgb(1, 1, 1),
+                    borderColor: rgb(0.09, 0.09, 0.1),
+                    borderWidth: 1.5
+                });
+                page1.drawText('FIRMA DEL CLIENTE AQUI:', {
+                    x: 65, y: 180, size: 10, font: fontBold, color: rgb(0.4, 0.4, 0.4)
+                });
+
+                // Stamp Box
+                page1.drawRectangle({
+                    x: 315, y: 90, width: 230, height: 110,
+                    color: rgb(1, 1, 1),
+                    borderColor: rgb(0.09, 0.09, 0.1),
+                    borderWidth: 1.5
+                });
+                page1.drawText('SELLO DE APROBACION:', {
+                    x: 330, y: 180, size: 10, font: fontBold, color: rgb(0.4, 0.4, 0.4)
+                });
+
+                // Page 2: Notes Page
+                const page2 = pdfDoc.addPage([595.28, 841.89]);
+                page2.drawRectangle({
+                    x: 40, y: height - 90, width: width - 80, height: 48,
+                    color: rgb(0.02, 0.84, 0.63),
+                    borderColor: rgb(0.09, 0.09, 0.1),
+                    borderWidth: 2
+                });
+                page2.drawText('PAGINA 2 — ANEXO Y NOTAS VISUALES', {
+                    x: 60, y: height - 72, size: 14, font: fontBold, color: rgb(0.09, 0.09, 0.1)
+                });
+                page2.drawText('Puedes rotar esta pagina, moverla hacia arriba o eliminarla desde la barra izquierda.', {
+                    x: 50, y: height - 130, size: 11, font: fontRegular, color: rgb(0.2, 0.2, 0.2)
+                });
+
+                const pdfBytes = await pdfDoc.save();
+                await loadPdfFromBytes(pdfBytes, 'Contrato_Demo_Pop.pdf');
+            } catch (err) {
+                console.error(err);
+                showToast('Error al crear el PDF de prueba', 'bg-pop-coral');
+            }
+        }
+
+        function setupDragAndDrop() {
+            const body = document.body;
+            const dropCard = document.getElementById('dropZoneCard');
+
+            window.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (dropCard) dropCard.classList.add('ring-4', 'ring-pop-coral');
+            });
+
+            window.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                if (dropCard) dropCard.classList.remove('ring-4', 'ring-pop-coral');
+            });
+
+            window.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                if (dropCard) dropCard.classList.remove('ring-4', 'ring-pop-coral');
+                const file = e.dataTransfer?.files?.[0];
+                if (file && file.type === 'application/pdf') {
+                    const buffer = await file.arrayBuffer();
+                    await loadPdfFromBytes(new Uint8Array(buffer), file.name);
+                } else if (file) {
+                    showToast('Por favor selecciona un archivo .PDF válido', 'bg-pop-coral');
+                }
+            });
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const buffer = await file.arrayBuffer();
+            await loadPdfFromBytes(new Uint8Array(buffer), file.name);
+            event.target.value = '';
+        }
+
+        async function loadPdfFromBytes(bytes, fileName) {
+            try {
+                rawPdfBytes = new Uint8Array(bytes);
+                currentDocName = fileName || 'documento.pdf';
+                document.getElementById('docNameDisplay').textContent = currentDocName;
+
+                // Load with PDF.js for visual rendering
+                const loadingTask = pdfjsLib.getDocument({ data: rawPdfBytes.slice() });
+                pdfJsDoc = await loadingTask.promise;
+
+                // Initialize state per page if fresh load
+                pagesState = [];
+                for (let i = 1; i <= pdfJsDoc.numPages; i++) {
+                    pagesState.push({
+                        pageNumber: i,
+                        rotation: 0,
+                        annotations: []
+                    });
+                }
+
+                // Switch UI from Empty State to Active Editor
+                document.getElementById('emptyStateView').classList.add('hidden');
+                document.getElementById('workspaceScroll').classList.remove('hidden');
+                document.getElementById('floatingBottomBar').classList.remove('hidden');
+                document.getElementById('exportBtn').disabled = false;
+                document.getElementById('addBlankPageBtn').disabled = false;
+
+                await renderAllPagesAndThumbnails();
+                showToast(`¡${currentDocName} listo para editar!`, 'bg-pop-mint');
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+                showToast('No se pudo abrir el PDF. Verifica que no tenga contraseña.', 'bg-pop-coral');
+            }
+        }
+
+        async function renderAllPagesAndThumbnails() {
+            if (!pdfJsDoc) return;
+            const container = document.getElementById('pagesRenderContainer');
+            const thumbContainer = document.getElementById('thumbnailsContainer');
+            container.innerHTML = '';
+            thumbContainer.innerHTML = '';
+
+            document.getElementById('pageCountBadge').textContent = pagesState.length;
+
+            for (let idx = 0; idx < pagesState.length; idx++) {
+                const pageMeta = pagesState[idx];
+                const pdfPage = await pdfJsDoc.getPage(pageMeta.pageNumber);
+                const totalRotation = (pdfPage.rotate + pageMeta.rotation) % 360;
+
+                const baseViewport = pdfPage.getViewport({ scale: currentZoom * 1.25, rotation: totalRotation });
+
+                // 1. Create Main Page Wrapper
+                const pageWrapper = document.createElement('div');
+                pageWrapper.className = 'pdf-page-wrapper';
+                pageWrapper.style.width = `${baseViewport.width}px`;
+                pageWrapper.style.height = `${baseViewport.height}px`;
+                pageWrapper.dataset.pageIndex = idx;
+
+                // Page Canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = baseViewport.width;
+                canvas.height = baseViewport.height;
+                canvas.className = 'block w-full h-full rounded-[4px]';
+                pageWrapper.appendChild(canvas);
+
+                // Interactive Overlay Layer (for Text, Highlights, Freehand Drawings, Signatures)
+                const overlay = document.createElement('div');
+                overlay.className = 'annotation-layer';
+                overlay.dataset.pageIndex = idx;
+                setupOverlayInteractions(overlay, idx, baseViewport.width, baseViewport.height);
+                pageWrapper.appendChild(overlay);
+
+                container.appendChild(pageWrapper);
+
+                // Render PDF page into canvas
+                const ctx = canvas.getContext('2d');
+                await pdfPage.render({ canvasContext: ctx, viewport: baseViewport }).promise;
+
+                // Render existing annotations for this page
+                renderAnnotationsForPage(idx, overlay);
+
+                // 2. Render Thumbnail Card in Left Sidebar
+                await createThumbnailCard(pdfPage, idx, totalRotation, thumbContainer);
+            }
+
+            lucide.createIcons();
+        }
+
+        async function createThumbnailCard(pdfPage, idx, totalRotation, thumbContainer) {
+            const thumbViewport = pdfPage.getViewport({ scale: 0.24, rotation: totalRotation });
+            const card = document.createElement('div');
+            card.className = `thumb-card pop-box-sm p-2.5 cursor-pointer transition-all ${idx === currentPageIndex ? 'active' : 'bg-white'}`;
+            card.onclick = (e) => {
+                if (e.target.closest('button')) return;
+                scrollToPage(idx);
+            };
+
+            const thumbCanvasWrap = document.createElement('div');
+            thumbCanvasWrap.className = 'bg-white border border-pop-dark rounded overflow-hidden flex items-center justify-center mb-2 shadow-sm';
+
+            const thumbCanvas = document.createElement('canvas');
+            thumbCanvas.width = thumbViewport.width;
+            thumbCanvas.height = thumbViewport.height;
+            thumbCanvas.className = 'max-w-full h-auto block';
+            thumbCanvasWrap.appendChild(thumbCanvas);
+
+            const tCtx = thumbCanvas.getContext('2d');
+            await pdfPage.render({ canvasContext: tCtx, viewport: thumbViewport }).promise;
+
+            const controls = document.createElement('div');
+            controls.className = 'flex items-center justify-between gap-1';
+            controls.innerHTML = `
+                <span class="font-mono font-bold text-xs px-1.5 py-0.5 bg-pop-bg border border-pop-dark rounded">Pág ${idx + 1}</span>
+                <div class="flex items-center gap-1">
+                    <button onclick="rotatePageAtIndex(${idx})" class="pop-btn bg-white p-1 text-xs" title="Rotar 90°">
+                        <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button onclick="movePage(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="pop-btn bg-white p-1 text-xs" title="Subir página">
+                        <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button onclick="movePage(${idx}, 1)" ${idx === pagesState.length - 1 ? 'disabled' : ''} class="pop-btn bg-white p-1 text-xs" title="Bajar página">
+                        <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button onclick="deletePageAtIndex(${idx})" ${pagesState.length <= 1 ? 'disabled' : ''} class="pop-btn bg-pop-coral text-white p-1 text-xs" title="Eliminar página">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            `;
+
+            card.appendChild(thumbCanvasWrap);
+            card.appendChild(controls);
+            thumbContainer.appendChild(card);
+        }
+
+        function scrollToPage(idx) {
+            currentPageIndex = idx;
+            const target = document.querySelector(`.pdf-page-wrapper[data-page-index="${idx}"]`);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            document.querySelectorAll('.thumb-card').forEach((el, i) => {
+                el.classList.toggle('active', i === idx);
+            });
+        }
+
+        async function rotatePageAtIndex(idx) {
+            pagesState[idx].rotation = (pagesState[idx].rotation + 90) % 360;
+            await renderAllPagesAndThumbnails();
+            showToast(`Página ${idx + 1} rotada 90°`, 'bg-pop-yellow');
+        }
+
+        async function movePage(idx, direction) {
+            const targetIdx = idx + direction;
+            if (targetIdx < 0 || targetIdx >= pagesState.length) return;
+            const temp = pagesState[idx];
+            pagesState[idx] = pagesState[targetIdx];
+            pagesState[targetIdx] = temp;
+            currentPageIndex = targetIdx;
+            await renderAllPagesAndThumbnails();
+        }
+
+        async function deletePageAtIndex(idx) {
+            if (pagesState.length <= 1) {
+                showToast('El documento debe tener al menos 1 página', 'bg-pop-coral');
+                return;
+            }
+            pagesState.splice(idx, 1);
+            if (currentPageIndex >= pagesState.length) {
+                currentPageIndex = pagesState.length - 1;
+            }
+            await renderAllPagesAndThumbnails();
+            showToast(`Página eliminada`, 'bg-pop-coral');
+        }
+
+        async function addBlankPage() {
+            if (!rawPdfBytes) return;
+            try {
+                // Bake current structural PDF with a new blank page at the end
+                const { PDFDocument } = PDFLib;
+                const pdfDoc = await PDFDocument.load(rawPdfBytes);
+                pdfDoc.addPage([595.28, 841.89]);
+                rawPdfBytes = await pdfDoc.save();
+
+                const loadingTask = pdfjsLib.getDocument({ data: rawPdfBytes.slice() });
+                pdfJsDoc = await loadingTask.promise;
+
+                pagesState.push({
+                    pageNumber: pdfJsDoc.numPages,
+                    rotation: 0,
+                    annotations: []
+                });
+
+                await renderAllPagesAndThumbnails();
+                scrollToPage(pagesState.length - 1);
+                showToast('Nueva página en blanco añadida', 'bg-pop-mint');
+            } catch (err) {
+                console.error(err);
+                showToast('No se pudo insertar la página', 'bg-pop-coral');
+            }
+        }
+
+        function setActiveTool(toolName) {
+            activeTool = toolName;
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tool === toolName);
+            });
+
+            const badge = document.getElementById('activeToolBadge');
+            const title = document.getElementById('helperTitle');
+            const desc = document.getElementById('helperDesc');
+
+            const toolInfo = {
+                select: {
+                    name: 'Seleccionar',
+                    title: 'Modo Selección y Mover',
+                    desc: 'Haz clic sobre cualquier elemento para arrastrarlo, cambiar su color/tamaño o eliminarlo.'
+                },
+                text: {
+                    name: 'Texto',
+                    title: 'Añadir Cuadro de Texto',
+                    desc: 'Haz clic en cualquier punto de la página para escribir directamente sobre el PDF.'
+                },
+                highlight: {
+                    name: 'Resaltar',
+                    title: 'Resaltador Translúcido',
+                    desc: 'Haz clic y arrastra sobre el texto del PDF para crear un bloque resaltado.'
+                },
+                draw: {
+                    name: 'Dibujar',
+                    title: 'Lápiz a Mano Alzada',
+                    desc: 'Dibuja libremente sobre la hoja manteniendo presionado el clic o tu dedo.'
+                },
+                stamp: {
+                    name: 'Sellos',
+                    title: 'Estampar Sello Pop',
+                    desc: 'Elige un sello en el panel derecho y haz clic en la hoja para colocarlo.'
+                }
+            };
+
+            if (toolInfo[toolName]) {
+                badge.textContent = toolInfo[toolName].name;
+                title.textContent = toolInfo[toolName].title;
+                desc.textContent = toolInfo[toolName].desc;
+            }
+
+            if (toolName === 'highlight' && inspectorState.color === '#18181B') {
+                setInspectorColor('#FFD166');
+            }
+        }
+
+        function setupOverlayInteractions(overlayEl, pageIdx, layerWidth, layerHeight) {
+            let isDrawing = false;
+            let startX = 0;
+            let startY = 0;
+            let tempHighlightEl = null;
+            let currentPathPoints = [];
+            let tempSvgPath = null;
+
+            overlayEl.addEventListener('pointerdown', (e) => {
+                currentPageIndex = pageIdx;
+                // If clicking directly on an existing annotation, let annotation handler manage it
+                if (e.target.closest('.anno-item')) return;
+
+                // Deselect any currently selected item
+                selectAnnotation(null);
+
+                const rect = overlayEl.getBoundingClientRect();
+                const xNorm = (e.clientX - rect.left) / rect.width;
+                const yNorm = (e.clientY - rect.top) / rect.height;
+
+                if (activeTool === 'text') {
+                    const newAnno = {
+                        id: 'anno_' + Date.now(),
+                        type: 'text',
+                        x: xNorm,
+                        y: yNorm,
+                        text: 'Escribe aquí...',
+                        color: inspectorState.color,
+                        fontSize: inspectorState.fontSize,
+                        bold: inspectorState.bold
+                    };
+                    pushUndoState();
+                    pagesState[pageIdx].annotations.push(newAnno);
+                    renderAnnotationsForPage(pageIdx, overlayEl);
+                    selectAnnotation(newAnno.id);
+                    setActiveTool('select');
+
+                    // Focus text box immediately
+                    setTimeout(() => {
+                        const domEl = overlayEl.querySelector(`[data-anno-id="${newAnno.id}"] .anno-text-editable`);
+                        if (domEl) {
+                            domEl.focus();
+                            document.execCommand('selectAll', false, null);
+                        }
+                    }, 30);
+                } else if (activeTool === 'stamp') {
+                    const newStamp = {
+                        id: 'anno_' + Date.now(),
+                        type: 'stamp',
+                        x: Math.max(0.02, xNorm - 0.08),
+                        y: Math.max(0.02, yNorm - 0.025),
+                        text: inspectorState.stampText,
+                        color: inspectorState.stampColor,
+                        fontSize: 16,
+                        bold: true
+                    };
+                    pushUndoState();
+                    pagesState[pageIdx].annotations.push(newStamp);
+                    renderAnnotationsForPage(pageIdx, overlayEl);
+                    selectAnnotation(newStamp.id);
+                    setActiveTool('select');
+                } else if (activeTool === 'highlight') {
+                    isDrawing = true;
+                    startX = xNorm;
+                    startY = yNorm;
+                    tempHighlightEl = document.createElement('div');
+                    tempHighlightEl.className = 'absolute pointer-events-none rounded-sm';
+                    tempHighlightEl.style.backgroundColor = inspectorState.color;
+                    tempHighlightEl.style.opacity = '0.38';
+                    tempHighlightEl.style.mixBlendMode = 'multiply';
+                    overlayEl.appendChild(tempHighlightEl);
+                } else if (activeTool === 'draw') {
+                    isDrawing = true;
+                    currentPathPoints = [{ x: xNorm, y: yNorm }];
+                    const svgNS = 'http://www.w3.org/2000/svg';
+                    const svg = document.createElementNS(svgNS, 'svg');
+                    svg.setAttribute('class', 'absolute inset-0 w-full h-full pointer-events-none');
+                    tempSvgPath = document.createElementNS(svgNS, 'path');
+                    tempSvgPath.setAttribute('fill', 'none');
+                    tempSvgPath.setAttribute('stroke', inspectorState.color);
+                    tempSvgPath.setAttribute('stroke-width', inspectorState.strokeWidth);
+                    tempSvgPath.setAttribute('stroke-linecap', 'round');
+                    tempSvgPath.setAttribute('stroke-linejoin', 'round');
+                    svg.appendChild(tempSvgPath);
+                    overlayEl.appendChild(svg);
+                }
+            });
+
+            overlayEl.addEventListener('pointermove', (e) => {
+                if (!isDrawing) return;
+                const rect = overlayEl.getBoundingClientRect();
+                const currX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                const currY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+                if (activeTool === 'highlight' && tempHighlightEl) {
+                    const left = Math.min(startX, currX);
+                    const top = Math.min(startY, currY);
+                    const w = Math.abs(currX - startX);
+                    const h = Math.abs(currY - startY);
+                    tempHighlightEl.style.left = `${left * 100}%`;
+                    tempHighlightEl.style.top = `${top * 100}%`;
+                    tempHighlightEl.style.width = `${w * 100}%`;
+                    tempHighlightEl.style.height = `${h * 100}%`;
+                } else if (activeTool === 'draw' && tempSvgPath) {
+                    currentPathPoints.push({ x: currX, y: currY });
+                    const d = currentPathPoints.map((pt, i) =>
+                        `${i === 0 ? 'M' : 'L'} ${pt.x * rect.width} ${pt.y * rect.height}`
+                    ).join(' ');
+                    tempSvgPath.setAttribute('d', d);
+                }
+            });
+
+            window.addEventListener('pointerup', (e) => {
+                if (!isDrawing) return;
+                isDrawing = false;
+                const rect = overlayEl.getBoundingClientRect();
+                const endX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                const endY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+                if (activeTool === 'highlight' && tempHighlightEl) {
+                    tempHighlightEl.remove();
+                    tempHighlightEl = null;
+                    const w = Math.abs(endX - startX);
+                    const h = Math.abs(endY - startY);
+                    if (w > 0.01 && h > 0.005) {
+                        pushUndoState();
+                        pagesState[pageIdx].annotations.push({
+                            id: 'anno_' + Date.now(),
+                            type: 'highlight',
+                            x: Math.min(startX, endX),
+                            y: Math.min(startY, endY),
+                            width: w,
+                            height: h,
+                            color: inspectorState.color
+                        });
+                        renderAnnotationsForPage(pageIdx, overlayEl);
+                    }
+                } else if (activeTool === 'draw' && tempSvgPath) {
+                    if (currentPathPoints.length > 2) {
+                        pushUndoState();
+                        pagesState[pageIdx].annotations.push({
+                            id: 'anno_' + Date.now(),
+                            type: 'draw',
+                            points: currentPathPoints,
+                            color: inspectorState.color,
+                            strokeWidth: inspectorState.strokeWidth
+                        });
+                    }
+                    renderAnnotationsForPage(pageIdx, overlayEl);
+                    tempSvgPath = null;
+                    currentPathPoints = [];
+                }
+            });
+        }
+
+        function renderAnnotationsForPage(pageIdx, overlayEl) {
+            if (!overlayEl) {
+                overlayEl = document.querySelector(`.annotation-layer[data-page-index="${pageIdx}"]`);
+            }
+            if (!overlayEl) return;
+            overlayEl.innerHTML = '';
+
+            const rect = overlayEl.getBoundingClientRect();
+            const layerW = overlayEl.clientWidth || rect.width || 600;
+            const layerH = overlayEl.clientHeight || rect.height || 840;
+
+            const annos = pagesState[pageIdx]?.annotations || [];
+
+            annos.forEach(anno => {
+                const itemEl = document.createElement('div');
+                itemEl.className = `anno-item ${anno.id === selectedAnnotationId ? 'selected' : ''}`;
+                itemEl.dataset.annoId = anno.id;
+
+                // Delete Floating Button
+                const delBtn = document.createElement('button');
+                delBtn.className = 'anno-delete-btn';
+                delBtn.innerHTML = '×';
+                delBtn.title = 'Eliminar elemento';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteAnnotationById(pageIdx, anno.id);
+                };
+                itemEl.appendChild(delBtn);
+
+                if (anno.type === 'text') {
+                    itemEl.style.left = `${anno.x * 100}%`;
+                    itemEl.style.top = `${anno.y * 100}%`;
+
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'anno-text-editable';
+                    textDiv.contentEditable = 'true';
+                    textDiv.innerText = anno.text;
+                    textDiv.style.color = anno.color;
+                    textDiv.style.fontSize = `${anno.fontSize * currentZoom}px`;
+                    textDiv.style.fontWeight = anno.bold ? '800' : '500';
+
+                    textDiv.addEventListener('input', () => {
+                        anno.text = textDiv.innerText;
+                    });
+                    textDiv.addEventListener('focus', () => {
+                        selectAnnotation(anno.id);
+                    });
+
+                    itemEl.appendChild(textDiv);
+                    makeElementDraggable(itemEl, anno, overlayEl);
+
+                } else if (anno.type === 'stamp') {
+                    itemEl.style.left = `${anno.x * 100}%`;
+                    itemEl.style.top = `${anno.y * 100}%`;
+
+                    const badge = document.createElement('div');
+                    badge.className = 'px-3 py-1 rounded-md border-2 border-pop-dark font-mono font-bold tracking-wider uppercase shadow-[3px_3px_0px_#18181B]';
+                    badge.style.backgroundColor = anno.color;
+                    badge.style.color = (anno.color === '#18181B' || anno.color === '#118AB2' || anno.color === '#FF5A5F' || anno.color === '#8338EC') ? '#FFFFFF' : '#18181B';
+                    badge.style.fontSize = `${(anno.fontSize || 16) * currentZoom}px`;
+                    badge.textContent = anno.text;
+
+                    itemEl.appendChild(badge);
+                    makeElementDraggable(itemEl, anno, overlayEl);
+
+                } else if (anno.type === 'highlight') {
+                    itemEl.style.left = `${anno.x * 100}%`;
+                    itemEl.style.top = `${anno.y * 100}%`;
+                    itemEl.style.width = `${anno.width * 100}%`;
+                    itemEl.style.height = `${anno.height * 100}%`;
+                    itemEl.style.backgroundColor = anno.color;
+                    itemEl.style.opacity = '0.38';
+                    itemEl.style.mixBlendMode = 'multiply';
+                    itemEl.style.borderRadius = '3px';
+
+                    const resizeHandle = document.createElement('div');
+                    resizeHandle.className = 'resize-handle';
+                    itemEl.appendChild(resizeHandle);
+
+                    makeElementDraggable(itemEl, anno, overlayEl);
+                    makeElementResizable(itemEl, resizeHandle, anno, overlayEl);
+
+                } else if (anno.type === 'image' || anno.type === 'signature') {
+                    itemEl.style.left = `${anno.x * 100}%`;
+                    itemEl.style.top = `${anno.y * 100}%`;
+                    itemEl.style.width = `${anno.width * 100}%`;
+                    itemEl.style.height = `${anno.height * 100}%`;
+
+                    const img = document.createElement('img');
+                    img.src = anno.dataUrl;
+                    img.className = 'w-full h-full object-contain pointer-events-none select-none';
+                    itemEl.appendChild(img);
+
+                    const resizeHandle = document.createElement('div');
+                    resizeHandle.className = 'resize-handle';
+                    itemEl.appendChild(resizeHandle);
+
+                    makeElementDraggable(itemEl, anno, overlayEl);
+                    makeElementResizable(itemEl, resizeHandle, anno, overlayEl);
+
+                } else if (anno.type === 'draw') {
+                    // Calculate bounding box for freehand path
+                    const xs = anno.points.map(p => p.x);
+                    const ys = anno.points.map(p => p.y);
+                    const minX = Math.min(...xs);
+                    const maxX = Math.max(...xs);
+                    const minY = Math.min(...ys);
+                    const maxY = Math.max(...ys);
+                    const pad = 0.015;
+
+                    const boxX = Math.max(0, minX - pad);
+                    const boxY = Math.max(0, minY - pad);
+                    const boxW = Math.max(0.02, (maxX - minX) + pad * 2);
+                    const boxH = Math.max(0.02, (maxY - minY) + pad * 2);
+
+                    itemEl.style.left = `${boxX * 100}%`;
+                    itemEl.style.top = `${boxY * 100}%`;
+                    itemEl.style.width = `${boxW * 100}%`;
+                    itemEl.style.height = `${boxH * 100}%`;
+
+                    const svgNS = 'http://www.w3.org/2000/svg';
+                    const svg = document.createElementNS(svgNS, 'svg');
+                    svg.setAttribute('class', 'w-full h-full overflow-visible pointer-events-none');
+
+                    const path = document.createElementNS(svgNS, 'path');
+                    const d = anno.points.map((pt, i) => {
+                        const relX = (pt.x - boxX) * layerW;
+                        const relY = (pt.y - boxY) * layerH;
+                        return `${i === 0 ? 'M' : 'L'} ${relX} ${relY}`;
+                    }).join(' ');
+
+                    path.setAttribute('d', d);
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('stroke', anno.color);
+                    path.setAttribute('stroke-width', anno.strokeWidth * currentZoom);
+                    path.setAttribute('stroke-linecap', 'round');
+                    path.setAttribute('stroke-linejoin', 'round');
+
+                    svg.appendChild(path);
+                    itemEl.appendChild(svg);
+
+                    makePathDraggable(itemEl, anno, overlayEl, boxX, boxY);
+                }
+
+                overlayEl.appendChild(itemEl);
+            });
+        }
+
+        function makeElementDraggable(el, anno, overlayEl) {
+            let isDragging = false;
+            let startMouseX = 0, startMouseY = 0;
+            let origX = 0, origY = 0;
+
+            el.addEventListener('pointerdown', (e) => {
+                if (e.target.classList.contains('resize-handle') || e.target.classList.contains('anno-delete-btn')) return;
+                e.stopPropagation();
+                selectAnnotation(anno.id);
+
+                // Allow inline text editing if clicking inside focused text
+                if (anno.type === 'text' && document.activeElement === el.querySelector('.anno-text-editable')) {
+                    return;
+                }
+
+                isDragging = true;
+                startMouseX = e.clientX;
+                startMouseY = e.clientY;
+                origX = anno.x;
+                origY = anno.y;
+                el.setPointerCapture(e.pointerId);
+            });
+
+            el.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                const rect = overlayEl.getBoundingClientRect();
+                const dx = (e.clientX - startMouseX) / rect.width;
+                const dy = (e.clientY - startMouseY) / rect.height;
+
+                anno.x = Math.max(0, Math.min(0.95, origX + dx));
+                anno.y = Math.max(0, Math.min(0.95, origY + dy));
+                el.style.left = `${anno.x * 100}%`;
+                el.style.top = `${anno.y * 100}%`;
+            });
+
+            el.addEventListener('pointerup', (e) => {
+                if (isDragging) {
+                    isDragging = false;
+                    el.releasePointerCapture(e.pointerId);
+                }
+            });
+        }
+
+        function makePathDraggable(el, anno, overlayEl, initBoxX, initBoxY) {
+            let isDragging = false;
+            let startMouseX = 0, startMouseY = 0;
+            let origPoints = [];
+
+            el.addEventListener('pointerdown', (e) => {
+                if (e.target.classList.contains('anno-delete-btn')) return;
+                e.stopPropagation();
+                selectAnnotation(anno.id);
+                isDragging = true;
+                startMouseX = e.clientX;
+                startMouseY = e.clientY;
+                origPoints = anno.points.map(p => ({ x: p.x, y: p.y }));
+                el.setPointerCapture(e.pointerId);
+            });
+
+            el.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                const rect = overlayEl.getBoundingClientRect();
+                const dx = (e.clientX - startMouseX) / rect.width;
+                const dy = (e.clientY - startMouseY) / rect.height;
+
+                anno.points = origPoints.map(p => ({
+                    x: Math.max(0, Math.min(1, p.x + dx)),
+                    y: Math.max(0, Math.min(1, p.y + dy))
+                }));
+                el.style.left = `${(initBoxX + dx) * 100}%`;
+                el.style.top = `${(initBoxY + dy) * 100}%`;
+            });
+
+            el.addEventListener('pointerup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    const pageIdx = parseInt(overlayEl.dataset.pageIndex, 10);
+                    renderAnnotationsForPage(pageIdx, overlayEl);
+                }
+            });
+        }
+
+        function makeElementResizable(el, handleEl, anno, overlayEl) {
+            let isResizing = false;
+            let startX = 0, startY = 0;
+            let origW = 0, origH = 0;
+
+            handleEl.addEventListener('pointerdown', (e) => {
+                e.stopPropagation();
+                isResizing = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                origW = anno.width;
+                origH = anno.height;
+                handleEl.setPointerCapture(e.pointerId);
+            });
+
+            handleEl.addEventListener('pointermove', (e) => {
+                if (!isResizing) return;
+                const rect = overlayEl.getBoundingClientRect();
+                const dw = (e.clientX - startX) / rect.width;
+                const dh = (e.clientY - startY) / rect.height;
+
+                anno.width = Math.max(0.03, Math.min(1 - anno.x, origW + dw));
+                anno.height = Math.max(0.015, Math.min(1 - anno.y, origH + dh));
+                el.style.width = `${anno.width * 100}%`;
+                el.style.height = `${anno.height * 100}%`;
+            });
+
+            handleEl.addEventListener('pointerup', (e) => {
+                if (isResizing) {
+                    isResizing = false;
+                    handleEl.releasePointerCapture(e.pointerId);
+                }
+            });
+        }
+
+        function selectAnnotation(id) {
+            selectedAnnotationId = id;
+            document.querySelectorAll('.anno-item').forEach(el => {
+                el.classList.toggle('selected', el.dataset.annoId === id);
+            });
+
+            const actionsBox = document.getElementById('selectedItemActions');
+            if (!id) {
+                actionsBox.classList.add('hidden');
+                return;
+            }
+            actionsBox.classList.remove('hidden');
+
+            const found = findAnnotationById(id);
+            if (found && found.anno) {
+                const a = found.anno;
+                if (a.color) highlightColorSwatch(a.color);
+                if (a.fontSize) {
+                    document.getElementById('fontSizeSlider').value = a.fontSize;
+                    document.getElementById('fontSizeValue').textContent = `${a.fontSize}px`;
+                }
+                if (a.strokeWidth) {
+                    document.getElementById('strokeWidthSlider').value = a.strokeWidth;
+                    document.getElementById('strokeWidthValue').textContent = `${a.strokeWidth}px`;
+                }
+            }
+        }
+
+        function findAnnotationById(id) {
+            for (let pIdx = 0; pIdx < pagesState.length; pIdx++) {
+                const idx = pagesState[pIdx].annotations.findIndex(a => a.id === id);
+                if (idx !== -1) {
+                    return { pageIdx: pIdx, annoIdx: idx, anno: pagesState[pIdx].annotations[idx] };
+                }
+            }
+            return null;
+        }
+
+        function setInspectorColor(hexColor) {
+            inspectorState.color = hexColor;
+            highlightColorSwatch(hexColor);
+
+            if (selectedAnnotationId) {
+                const found = findAnnotationById(selectedAnnotationId);
+                if (found) {
+                    found.anno.color = hexColor;
+                    renderAnnotationsForPage(found.pageIdx);
+                }
+            }
+        }
+
+        function highlightColorSwatch(hexColor) {
+            document.querySelectorAll('.color-swatch').forEach(btn => {
+                const isMatch = btn.dataset.color.toUpperCase() === hexColor.toUpperCase();
+                btn.classList.toggle('ring-2', isMatch);
+                btn.classList.toggle('ring-offset-2', isMatch);
+                btn.classList.toggle('ring-pop-coral', isMatch);
+            });
+        }
+
+        function updateFontSize(val) {
+            const size = parseInt(val, 10);
+            inspectorState.fontSize = size;
+            document.getElementById('fontSizeValue').textContent = `${size}px`;
+
+            if (selectedAnnotationId) {
+                const found = findAnnotationById(selectedAnnotationId);
+                if (found && (found.anno.type === 'text' || found.anno.type === 'stamp')) {
+                    found.anno.fontSize = size;
+                    renderAnnotationsForPage(found.pageIdx);
+                }
+            }
+        }
+
+        function toggleTextBold() {
+            inspectorState.bold = !inspectorState.bold;
+            document.getElementById('boldToggleBtn').classList.toggle('bg-pop-yellow', inspectorState.bold);
+
+            if (selectedAnnotationId) {
+                const found = findAnnotationById(selectedAnnotationId);
+                if (found && found.anno.type === 'text') {
+                    found.anno.bold = !found.anno.bold;
+                    renderAnnotationsForPage(found.pageIdx);
+                }
+            }
+        }
+
+        function updateStrokeWidth(val) {
+            const width = parseInt(val, 10);
+            inspectorState.strokeWidth = width;
+            document.getElementById('strokeWidthValue').textContent = `${width}px`;
+
+            if (selectedAnnotationId) {
+                const found = findAnnotationById(selectedAnnotationId);
+                if (found && found.anno.type === 'draw') {
+                    found.anno.strokeWidth = width;
+                    renderAnnotationsForPage(found.pageIdx);
+                }
+            }
+        }
+
+        function selectStampPreset(text, color) {
+            inspectorState.stampText = text;
+            inspectorState.stampColor = color;
+            setActiveTool('stamp');
+            showToast(`Sello "${text}" listo. Haz clic en la página.`, 'bg-pop-yellow');
+        }
+
+        function deleteAnnotationById(pageIdx, id) {
+            pushUndoState();
+            pagesState[pageIdx].annotations = pagesState[pageIdx].annotations.filter(a => a.id !== id);
+            if (selectedAnnotationId === id) selectAnnotation(null);
+            renderAnnotationsForPage(pageIdx);
+        }
+
+        function deleteSelectedAnnotation() {
+            if (!selectedAnnotationId) return;
+            const found = findAnnotationById(selectedAnnotationId);
+            if (found) {
+                deleteAnnotationById(found.pageIdx, selectedAnnotationId);
+                showToast('Elemento eliminado', 'bg-pop-coral');
+            }
+        }
+
+        function duplicateSelectedAnnotation() {
+            if (!selectedAnnotationId) return;
+            const found = findAnnotationById(selectedAnnotationId);
+            if (found) {
+                pushUndoState();
+                const clone = JSON.parse(JSON.stringify(found.anno));
+                clone.id = 'anno_' + Date.now();
+                if (typeof clone.x === 'number') clone.x = Math.min(0.85, clone.x + 0.03);
+                if (typeof clone.y === 'number') clone.y = Math.min(0.85, clone.y + 0.03);
+                pagesState[found.pageIdx].annotations.push(clone);
+                renderAnnotationsForPage(found.pageIdx);
+                selectAnnotation(clone.id);
+            }
+        }
+
+        // --- SIGNATURE PAD ---
+        function initSignaturePad() {
+            const canvas = document.getElementById('signaturePadCanvas');
+            sigPadCtx = canvas.getContext('2d');
+            sigPadCtx.lineWidth = 3.2;
+            sigPadCtx.lineCap = 'round';
+            sigPadCtx.lineJoin = 'round';
+            sigPadCtx.strokeStyle = sigStrokeColor;
+
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                return {
+                    x: (e.clientX - rect.left) * scaleX,
+                    y: (e.clientY - rect.top) * scaleY
+                };
+            };
+
+            canvas.addEventListener('pointerdown', (e) => {
+                isDrawingSig = true;
+                const pos = getPos(e);
+                sigPadCtx.beginPath();
+                sigPadCtx.moveTo(pos.x, pos.y);
+            });
+
+            canvas.addEventListener('pointermove', (e) => {
+                if (!isDrawingSig) return;
+                const pos = getPos(e);
+                sigPadCtx.lineTo(pos.x, pos.y);
+                sigPadCtx.stroke();
+            });
+
+            window.addEventListener('pointerup', () => {
+                isDrawingSig = false;
+            });
+        }
+
+        function openSignatureModal() {
+            if (!pdfJsDoc) {
+                showToast('Primero abre un PDF o carga el de prueba', 'bg-pop-yellow');
+                return;
+            }
+            document.getElementById('signatureModal').classList.remove('hidden');
+            clearSignaturePad();
+        }
+
+        function closeSignatureModal() {
+            document.getElementById('signatureModal').classList.add('hidden');
+        }
+
+        function setSigColor(color) {
+            sigStrokeColor = color;
+            if (sigPadCtx) sigPadCtx.strokeStyle = color;
+        }
+
+        function clearSignaturePad() {
+            const canvas = document.getElementById('signaturePadCanvas');
+            sigPadCtx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function saveAndInsertSignature() {
+            const canvas = document.getElementById('signaturePadCanvas');
+            const dataUrl = canvas.toDataURL('image/png');
+            closeSignatureModal();
+
+            pushUndoState();
+            const newSig = {
+                id: 'anno_' + Date.now(),
+                type: 'signature',
+                x: 0.15,
+                y: 0.72,
+                width: 0.28,
+                height: 0.10,
+                dataUrl: dataUrl
+            };
+            pagesState[currentPageIndex].annotations.push(newSig);
+            renderAnnotationsForPage(currentPageIndex);
+            selectAnnotation(newSig.id);
+            setActiveTool('select');
+            showToast('Firma añadida. Arrástrala a su lugar.', 'bg-pop-mint');
+        }
+
+        // --- IMAGE INSERTION ---
+        function triggerImageUpload() {
+            if (!pdfJsDoc) {
+                showToast('Primero abre un PDF o carga el de prueba', 'bg-pop-yellow');
+                return;
+            }
+            document.getElementById('imageUploadInput').click();
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                pushUndoState();
+                const newImg = {
+                    id: 'anno_' + Date.now(),
+                    type: 'image',
+                    x: 0.2,
+                    y: 0.25,
+                    width: 0.35,
+                    height: 0.25,
+                    dataUrl: e.target.result
+                };
+                pagesState[currentPageIndex].annotations.push(newImg);
+                renderAnnotationsForPage(currentPageIndex);
+                selectAnnotation(newImg.id);
+                setActiveTool('select');
+                showToast('Imagen insertada en la página', 'bg-pop-mint');
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function pushUndoState() {
+            undoStack.push(JSON.stringify(pagesState));
+            if (undoStack.length > 25) undoStack.shift();
+            document.getElementById('undoBtn').disabled = false;
+        }
+
+        function undoLastAction() {
+            if (undoStack.length === 0) return;
+            pagesState = JSON.parse(undoStack.pop());
+            document.getElementById('undoBtn').disabled = undoStack.length === 0;
+            selectAnnotation(null);
+            pagesState.forEach((_, idx) => renderAnnotationsForPage(idx));
+            showToast('Acción deshecha', 'bg-pop-yellow');
+        }
+
+        function clearCurrentPageAnnotations() {
+            if (!pagesState[currentPageIndex] || pagesState[currentPageIndex].annotations.length === 0) return;
+            pushUndoState();
+            pagesState[currentPageIndex].annotations = [];
+            selectAnnotation(null);
+            renderAnnotationsForPage(currentPageIndex);
+            showToast('Anotaciones de la página borradas', 'bg-pop-coral');
+        }
+
+        async function changeZoom(delta) {
+            currentZoom = Math.max(0.55, Math.min(2.2, +(currentZoom + delta).toFixed(2)));
+            document.getElementById('zoomLabel').textContent = `${Math.round(currentZoom * 100)}%`;
+            await renderAllPagesAndThumbnails();
+        }
+
+        async function resetZoom() {
+            currentZoom = 1.0;
+            document.getElementById('zoomLabel').textContent = '100%';
+            await renderAllPagesAndThumbnails();
+        }
+
+        function setupKeyboardShortcuts() {
+            window.addEventListener('keydown', (e) => {
+                // Ignore shortcuts when typing inside editable text
+                if (document.activeElement?.classList.contains('anno-text-editable')) return;
+
+                if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+                    e.preventDefault();
+                    undoLastAction();
+                } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (selectedAnnotationId) {
+                        e.preventDefault();
+                        deleteSelectedAnnotation();
+                    }
+                } else if (e.key.toLowerCase() === 'v') {
+                    setActiveTool('select');
+                } else if (e.key.toLowerCase() === 't') {
+                    setActiveTool('text');
+                } else if (e.key.toLowerCase() === 'h') {
+                    setActiveTool('highlight');
+                } else if (e.key.toLowerCase() === 'd') {
+                    setActiveTool('draw');
+                }
+            });
+        }
+
+        // Helper to convert HEX to pdf-lib rgb(0..1)
+        function hexToPdfRgb(hex) {
+            const clean = hex.replace('#', '');
+            const r = parseInt(clean.substring(0, 2), 16) / 255;
+            const g = parseInt(clean.substring(2, 4), 16) / 255;
+            const b = parseInt(clean.substring(4, 6), 16) / 255;
+            return PDFLib.rgb(r, g, b);
+        }
+
+        // Convert any dataURL image/canvas to PNG Uint8Array for pdf-lib embedding
+        async function dataUrlToPngBytes(dataUrl) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    const c = document.createElement('canvas');
+                    c.width = img.width || 400;
+                    c.height = img.height || 200;
+                    const ctx = c.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    c.toBlob(async (blob) => {
+                        const buf = await blob.arrayBuffer();
+                        resolve(new Uint8Array(buf));
+                    }, 'image/png');
+                };
+                img.onerror = reject;
+                img.src = dataUrl;
+            });
+        }
+
+        // Export Final Baked PDF using pdf-lib
+        async function exportFinalPDF() {
+            if (!rawPdfBytes) return;
+            try {
+                showToast('Procesando y empaquetando tu PDF...', 'bg-pop-yellow');
+                const { PDFDocument, StandardFonts, degrees, rgb } = PDFLib;
+
+                const srcDoc = await PDFDocument.load(rawPdfBytes);
+                const outDoc = await PDFDocument.create();
+
+                const fontRegular = await outDoc.embedFont(StandardFonts.Helvetica);
+                const fontBold = await outDoc.embedFont(StandardFonts.HelveticaBold);
+
+                // Copy pages in the exact order defined by pagesState
+                const pageIndicesToCopy = pagesState.map(p => p.pageNumber - 1);
+                const copiedPages = await outDoc.copyPages(srcDoc, pageIndicesToCopy);
+
+                for (let i = 0; i < pagesState.length; i++) {
+                    const pageMeta = pagesState[i];
+                    const pdfPage = copiedPages[i];
+                    outDoc.addPage(pdfPage);
+
+                    // Apply user rotation
+                    const currentRot = pdfPage.getRotation().angle;
+                    pdfPage.setRotation(degrees((currentRot + pageMeta.rotation) % 360));
+
+                    const { width, height } = pdfPage.getSize();
+
+                    // Bake each annotation onto the page
+                    for (const anno of pageMeta.annotations) {
+                        if (anno.type === 'text') {
+                            const pdfX = anno.x * width;
+                            const fontSize = anno.fontSize || 16;
+                            const pdfY = height - (anno.y * height) - fontSize;
+
+                            const lines = (anno.text || '').split('\n');
+                            lines.forEach((lineText, lineIdx) => {
+                                pdfPage.drawText(lineText, {
+                                    x: pdfX,
+                                    y: pdfY - (lineIdx * fontSize * 1.25),
+                                    size: fontSize,
+                                    font: anno.bold ? fontBold : fontRegular,
+                                    color: hexToPdfRgb(anno.color || '#18181B')
+                                });
+                            });
+                        } else if (anno.type === 'stamp') {
+                            const stampW = Math.max(95, (anno.text.length * 10) + 24);
+                            const stampH = 28;
+                            const pdfX = anno.x * width;
+                            const pdfY = height - (anno.y * height) - stampH;
+
+                            pdfPage.drawRectangle({
+                                x: pdfX,
+                                y: pdfY,
+                                width: stampW,
+                                height: stampH,
+                                color: hexToPdfRgb(anno.color || '#06D6A0'),
+                                borderColor: rgb(0.09, 0.09, 0.1),
+                                borderWidth: 2
+                            });
+
+                            const isDarkBg = ['#18181B', '#118AB2', '#FF5A5F', '#8338EC'].includes(anno.color);
+                            pdfPage.drawText(anno.text, {
+                                x: pdfX + 10,
+                                y: pdfY + 8,
+                                size: 12,
+                                font: fontBold,
+                                color: isDarkBg ? rgb(1, 1, 1) : rgb(0.09, 0.09, 0.1)
+                            });
+                        } else if (anno.type === 'highlight') {
+                            const rectW = anno.width * width;
+                            const rectH = anno.height * height;
+                            const pdfX = anno.x * width;
+                            const pdfY = height - (anno.y * height) - rectH;
+
+                            pdfPage.drawRectangle({
+                                x: pdfX,
+                                y: pdfY,
+                                width: rectW,
+                                height: rectH,
+                                color: hexToPdfRgb(anno.color || '#FFD166'),
+                                opacity: 0.38
+                            });
+                        } else if (anno.type === 'draw' && anno.points?.length > 1) {
+                            const colorRgb = hexToPdfRgb(anno.color || '#FF5A5F');
+                            const thickness = anno.strokeWidth || 3;
+                            for (let p = 0; p < anno.points.length - 1; p++) {
+                                const p1 = anno.points[p];
+                                const p2 = anno.points[p + 1];
+                                pdfPage.drawLine({
+                                    start: { x: p1.x * width, y: height - (p1.y * height) },
+                                    end: { x: p2.x * width, y: height - (p2.y * height) },
+                                    thickness: thickness,
+                                    color: colorRgb
+                                });
+                            }
+                        } else if ((anno.type === 'signature' || anno.type === 'image') && anno.dataUrl) {
+                            const pngBytes = await dataUrlToPngBytes(anno.dataUrl);
+                            const embeddedImg = await outDoc.embedPng(pngBytes);
+                            const imgW = anno.width * width;
+                            const imgH = anno.height * height;
+                            const pdfX = anno.x * width;
+                            const pdfY = height - (anno.y * height) - imgH;
+
+                            pdfPage.drawImage(embeddedImg, {
+                                x: pdfX,
+                                y: pdfY,
+                                width: imgW,
+                                height: imgH
+                            });
+                        }
+                    }
+                }
+
+                const finalPdfBytes = await outDoc.save();
+                const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                const cleanName = currentDocName.replace(/\.pdf$/i, '');
+                a.download = `${cleanName}_POP_Editado.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+
+                showToast('¡PDF descargado con éxito!', 'bg-pop-mint');
+            } catch (error) {
+                console.error('Error exporting PDF:', error);
+                showToast('Hubo un problema al exportar el PDF', 'bg-pop-coral');
+            }
+        }
+    </script>
+</body>
+</html>
