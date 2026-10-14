@@ -714,3 +714,76 @@ body {
   font-size: 12px;
   color: var(--on-surface-subtle);
 }
+
+/* ==========================================================================
+   OPTIMIZACIÓN MÓVIL (Estilo iLovePDF iOS / Bottom Navigation)
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Simplificar la barra superior */
+  .app-header {
+    padding: 0 12px;
+  }
+  .doc-meta { display: none; } /* Ocultar el nombre del archivo para ganar espacio */
+  .header-right span { display: none; } /* Ocultar la palabra "Exportar", dejar solo el icono */
+  
+  /* Ocultar barra lateral en móviles */
+  .sidebar-thumbnails {
+    display: none;
+  }
+
+  /* Ajustar el área de trabajo para no tapar el PDF con la barra inferior */
+  .workspace-area {
+    margin-bottom: 70px;
+    flex-direction: column;
+  }
+  
+  .viewport-canvas-container {
+    padding: 16px 8px;
+  }
+
+  /* Mover la barra de herramientas a la parte inferior (Bottom Nav) */
+  .toolbar-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--surface);
+    border-top: 1px solid var(--surface-border);
+    padding: 8px 12px;
+    /* Respeta la barra de inicio táctil de los iPhone modernos */
+    padding-bottom: env(safe-area-inset-bottom, 8px); 
+    z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  }
+
+  /* Hacer la barra inferior deslizable horizontalmente */
+  .toolbar-pill {
+    background: transparent;
+    box-shadow: none;
+    width: 100%;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch; /* Desplazamiento elástico en iOS */
+    scrollbar-width: none; /* Ocultar barra de scroll en Firefox */
+  }
+
+  /* Ocultar barra de scroll en Safari/Chrome móvil */
+  .toolbar-pill::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Agrandar botones a 44x44px (Estándar de usabilidad táctil de Apple) */
+  .tool-btn, .color-picker-label, .g-select, .stepper-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* Ajustar la tarjeta de inicio vacía */
+  .empty-state-card {
+    margin-top: 20px;
+    padding: 24px 16px;
+  }
+  
+  .empty-actions {
+    flex-direction: column;
+  }
+}
