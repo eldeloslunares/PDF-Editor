@@ -1,5 +1,5 @@
 /* ==========================================================================
-   JD PDF Editor & Suite - Google Material Design 3 + iLovePDF iOS Grid
+   JD PDF Editor & Suite - Google Material Design 3 + iLovePDF Interactive UX
    ========================================================================== */
 :root {
   --g-blue: #1a73e8;
@@ -7,6 +7,9 @@
   --g-blue-light: #e8f0fe;
   --g-blue-container: #d3e3fd;
   --g-red: #ea4335;
+  --g-red-light: #fce8e6;
+  --g-green: #34a853;
+  --g-green-light: #e6f4ea;
   --surface: #ffffff;
   --surface-dim: #f5f6fa;
   --surface-variant: #edf2fa;
@@ -15,6 +18,7 @@
   --on-surface: #202124;
   --on-surface-subtle: #5f6368;
   --on-surface-variant: #444746;
+  --font-main: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
   --g-shadow-elevation-1: 0 2px 6px rgba(60,64,67,0.08), 0 1px 2px rgba(60,64,67,0.06);
   --g-shadow-elevation-2: 0 4px 12px rgba(60,64,67,0.12), 0 1px 3px rgba(60,64,67,0.08);
   --g-shadow-elevation-3: 0 8px 24px rgba(60,64,67,0.18);
@@ -25,14 +29,26 @@
   --radius-pill: 999px;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-main);
+}
+
 body {
-  font-family: 'Roboto', 'Google Sans', sans-serif;
+  font-family: var(--font-main);
   background-color: var(--surface-dim);
   color: var(--on-surface);
   height: 100vh;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Garantizar la misma tipografía en todos los controles y listas desplegables */
+button, input, select, textarea, optgroup, option {
+  font-family: var(--font-main) !important;
+  color: inherit;
 }
 
 /* Manejo de Vistas SPA */
@@ -64,7 +80,6 @@ body {
 }
 
 .home-brand-title {
-  font-family: 'Google Sans', sans-serif;
   font-size: 20px;
   font-weight: 700;
   color: var(--on-surface);
@@ -138,7 +153,6 @@ body {
   margin-bottom: 28px;
 }
 .tools-category-banner h1 {
-  font-family: 'Google Sans', sans-serif;
   font-size: 26px;
   font-weight: 700;
   margin-bottom: 6px;
@@ -205,7 +219,6 @@ body {
 }
 
 .tool-card-title {
-  font-family: 'Google Sans', 'Roboto', sans-serif;
   font-size: 14.5px;
   font-weight: 500;
   color: #2c2e33;
@@ -254,7 +267,6 @@ body {
   border-radius: var(--radius-pill);
   cursor: pointer;
   color: #444746;
-  font-family: 'Google Sans', sans-serif;
   font-size: 11px;
   font-weight: 500;
   gap: 3px;
@@ -265,12 +277,12 @@ body {
 }
 .ios-nav-item.active {
   background: #ededf0;
-  color: #e5322d; /* Rojo característico de Outils en iLovePDF */
+  color: #e5322d;
   font-weight: 700;
 }
 
 /* ==========================================================================
-   MODAL UNIVERSAL DE HERRAMIENTAS
+   MODAL UNIVERSAL DE HERRAMIENTAS (Personalizado estilo iLovePDF)
    ========================================================================== */
 .tool-workspace-modal {
   position: fixed;
@@ -291,20 +303,22 @@ body {
   background: #ffffff;
   border-radius: 24px;
   width: 100%;
-  max-width: 620px;
-  max-height: 90vh;
+  max-width: 780px;
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
   box-shadow: var(--g-shadow-elevation-3);
   overflow: hidden;
+  transition: max-width 0.25s ease;
 }
 
 .tool-modal-header {
-  padding: 20px 24px;
+  padding: 18px 24px;
   border-bottom: 1px solid var(--surface-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: #ffffff;
 }
 .tool-modal-title-group {
   display: flex;
@@ -312,8 +326,8 @@ body {
   gap: 14px;
 }
 .tool-modal-title-group h2 {
-  font-family: 'Google Sans', sans-serif;
   font-size: 19px;
+  font-weight: 700;
 }
 .tool-modal-title-group p {
   font-size: 13px;
@@ -321,34 +335,260 @@ body {
 }
 
 .tool-modal-body {
-  padding: 24px;
+  padding: 22px 24px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
+/* Dropzone adaptable (Compacto cuando ya hay archivos cargados) */
 .tool-dropzone {
   border: 2px dashed #a8c7fa;
   background: #f8fafd;
   border-radius: 16px;
-  padding: 32px 20px;
+  padding: 28px 20px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  transition: background 0.2s, border-color 0.2s;
+  gap: 8px;
+  transition: all 0.2s ease;
 }
 .tool-dropzone:hover {
   background: #eef4ff;
   border-color: var(--g-blue);
 }
+.tool-dropzone.compact-mode {
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 12px 18px;
+  text-align: left;
+  border-style: solid;
+  border-width: 1px;
+  border-color: #d3e3fd;
+  background: #f4f8ff;
+}
+.tool-dropzone.compact-mode .dropzone-icon {
+  font-size: 26px !important;
+}
+.tool-dropzone.compact-mode .dropzone-text-wrap {
+  flex: 1;
+  margin-left: 12px;
+}
+.tool-dropzone.compact-mode h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.tool-dropzone.compact-mode p {
+  font-size: 12px;
+  color: var(--on-surface-subtle);
+}
 .dropzone-icon {
-  font-size: 42px !important;
+  font-size: 40px !important;
   color: var(--g-blue);
 }
 
+/* ==========================================================================
+   TARJETAS ARRASTRABLES PARA FUSIONAR PDF E IMÁGENES (Estilo iLovePDF)
+   ========================================================================== */
+.merge-Sort-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-variant);
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  color: var(--on-surface-variant);
+}
+.merge-toolbar-actions {
+  display: flex;
+  gap: 6px;
+}
+.mini-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--surface-border);
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--on-surface);
+  transition: all 0.15s;
+}
+.mini-pill-btn:hover {
+  background: var(--g-blue-light);
+  border-color: #a8c7fa;
+  color: var(--g-blue);
+}
+.mini-pill-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.draggable-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+  padding: 4px 2px;
+}
+
+.pdf-sortable-card {
+  background: #ffffff;
+  border: 1.5px solid var(--surface-border);
+  border-radius: 16px;
+  padding: 12px 10px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  cursor: grab;
+  user-select: none;
+  box-shadow: var(--g-shadow-elevation-1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.pdf-sortable-card:hover {
+  border-color: var(--g-blue);
+  box-shadow: var(--g-shadow-elevation-2);
+  transform: translateY(-2px);
+}
+.pdf-sortable-card:active {
+  cursor: grabbing;
+}
+.pdf-sortable-card.dragging {
+  opacity: 0.45;
+  border: 2px dashed var(--g-blue);
+  transform: scale(0.96);
+}
+.pdf-sortable-card.drag-over {
+  border-color: var(--g-blue);
+  background: var(--g-blue-light);
+}
+
+.card-order-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--g-blue);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(26, 115, 232, 0.3);
+  z-index: 2;
+}
+
+.card-remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--on-surface-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  z-index: 2;
+  transition: all 0.15s;
+}
+.card-remove-btn:hover {
+  background: var(--g-red);
+  color: #ffffff;
+}
+.card-remove-btn .material-symbols-outlined {
+  font-size: 15px;
+}
+
+.card-thumb-box {
+  width: 100%;
+  height: 126px;
+  background: var(--surface-dim);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 8px;
+  border: 1px solid #eef0f4;
+}
+.card-thumb-box canvas,
+.card-thumb-box img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.card-file-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface);
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.card-file-meta {
+  font-size: 11px;
+  color: var(--on-surface-subtle);
+  margin-bottom: 6px;
+}
+
+.card-move-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding-top: 6px;
+  border-top: 1px solid #f1f3f4;
+}
+.card-shift-btn {
+  border: 1px solid var(--surface-border);
+  background: #fafafa;
+  border-radius: 6px;
+  width: 28px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--on-surface-variant);
+}
+.card-shift-btn:hover:not(:disabled) {
+  background: var(--g-blue-light);
+  color: var(--g-blue);
+  border-color: #a8c7fa;
+}
+.card-shift-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.card-shift-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+.drag-hint-icon {
+  color: #9aa0a6;
+  font-size: 16px !important;
+}
+
+/* Lista simple para herramientas de 1 solo archivo */
 .tool-files-list {
   display: flex;
   flex-direction: column;
@@ -360,20 +600,321 @@ body {
   justify-content: space-between;
   background: var(--surface-variant);
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 13px;
   font-weight: 500;
 }
+.file-chip-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.file-chip-info .material-symbols-outlined {
+  color: var(--g-blue);
+}
 
+/* ==========================================================================
+   PANELES DE OPCIONES PERSONALIZADAS (Dividir, OCR, Excel, etc.)
+   ========================================================================== */
 .tool-options-panel {
   background: #f8fafd;
   border: 1px solid var(--surface-border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+.option-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.option-section-title .material-symbols-outlined {
+  font-size: 18px;
+  color: var(--g-blue);
+}
+
+/* Pestañas principales estilo iLovePDF (Por Rango / Por Páginas) */
+.ilovepdf-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.ilovepdf-tab-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--surface-border);
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  transition: all 0.18s ease;
+}
+.ilovepdf-tab-btn:hover {
+  border-color: #a8c7fa;
+  background: #f4f8ff;
+}
+.ilovepdf-tab-btn.active {
+  border-color: var(--g-blue);
+  background: var(--g-blue-light);
+  color: var(--g-blue);
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.12);
+}
+
+/* Sub-píldoras (Rangos personalizados vs Rangos fijos / Extraer todas vs Seleccionar) */
+.ilovepdf-subpills {
+  display: flex;
+  gap: 8px;
+  background: #e9eef6;
+  padding: 4px;
+  border-radius: 10px;
+}
+.subpill-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--on-surface-subtle);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.subpill-btn.active {
+  background: #ffffff;
+  color: var(--on-surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Filas de rangos personalizados (Desde - Hasta) */
+.custom-ranges-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.range-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid var(--surface-border);
+  padding: 10px 14px;
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+.range-badge-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--g-blue);
+  background: var(--g-blue-light);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  min-width: 78px;
+  text-align: center;
+}
+.range-input-pair {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.range-input-pair span {
+  font-size: 12.5px;
+  color: var(--on-surface-subtle);
+  font-weight: 500;
+}
+.range-number-input {
+  width: 76px;
+  height: 36px;
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+}
+.range-number-input:focus {
+  border-color: var(--g-blue);
+  box-shadow: 0 0 0 2px rgba(26,115,232,0.15);
+}
+
+/* Cuadrícula visual de páginas para Dividir PDF (Seleccionar páginas) */
+.split-pages-visual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: 10px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+}
+.split-page-thumb-item {
+  border: 2px solid var(--surface-border);
+  border-radius: 10px;
+  padding: 8px 6px 6px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+  user-select: none;
+  background: #fafafa;
+}
+.split-page-thumb-item:hover {
+  border-color: #a8c7fa;
+}
+.split-page-thumb-item.selected {
+  border-color: var(--g-blue);
+  background: var(--g-blue-light);
+}
+.split-page-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1.5px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  transition: all 0.15s;
+}
+.split-page-thumb-item.selected .split-page-check {
+  background: var(--g-blue);
+  border-color: var(--g-blue);
+  color: #ffffff;
+}
+.split-page-check .material-symbols-outlined {
+  font-size: 14px;
+  font-weight: 700;
+}
+.split-page-canvas-wrap {
+  width: 100%;
+  height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.split-page-canvas-wrap canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.split-page-number {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+/* Tarjetas de selección para OCR y Modo de Hojas Excel */
+.choice-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
+.choice-option-card {
+  background: #ffffff;
+  border: 1.5px solid var(--surface-border);
+  border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: all 0.18s ease;
+  position: relative;
+}
+.choice-option-card:hover {
+  border-color: #a8c7fa;
+  background: #fafdff;
+}
+.choice-option-card.selected {
+  border-color: var(--g-blue);
+  background: var(--g-blue-light);
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.12);
+}
+.choice-card-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--surface-variant);
+  color: var(--on-surface-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.choice-option-card.selected .choice-card-icon {
+  background: var(--g-blue);
+  color: #ffffff;
+}
+.choice-card-content {
+  flex: 1;
+}
+.choice-card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.choice-card-desc {
+  font-size: 12px;
+  color: var(--on-surface-subtle);
+  line-height: 1.35;
+}
+.choice-badge-ocr {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  background: #fef7e0;
+  color: #b06000;
+}
+
+/* Checkbox estilizado */
+.g-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface);
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 2px;
+}
+.g-checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--g-blue);
+  cursor: pointer;
+}
+
 .option-field-group {
   display: flex;
   flex-direction: column;
@@ -384,26 +925,53 @@ body {
   font-weight: 600;
   color: var(--on-surface-subtle);
 }
+
+/* Inputs y Listas Desplegables con fuente consistente */
 .g-input-bordered, .g-select-bordered {
-  height: 38px;
+  height: 40px;
   border: 1px solid var(--surface-border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0 12px;
-  font-size: 14px;
-  background: #fff;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: var(--font-main) !important;
+  background-color: #ffffff;
+  color: var(--on-surface);
   outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.g-select-bordered {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%235f6368'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 20px;
+  cursor: pointer;
 }
 .g-input-bordered:focus, .g-select-bordered:focus {
   border-color: var(--g-blue);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
 }
 
 .tool-modal-footer {
   padding: 16px 24px;
   border-top: 1px solid var(--surface-border);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 12px;
   background: #fafafa;
+}
+.footer-left-hint {
+  font-size: 12.5px;
+  color: var(--on-surface-subtle);
+}
+.footer-right-btns {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
 }
 
 /* Archivos Recientes y Escáner */
@@ -443,6 +1011,7 @@ body {
   text-align: left;
   padding: 16px 0;
   border-bottom: 1px solid #f1f3f4;
+  gap: 16px;
 }
 
 /* ==========================================================================
@@ -453,7 +1022,7 @@ body {
 .brand-logo { display: flex; align-items: center; cursor: pointer; user-select: none; }
 .doc-meta { display: flex; flex-direction: column; justify-content: center; }
 .doc-title-row { display: flex; align-items: center; gap: 10px; }
-#documentNameInput { font-family: 'Google Sans', 'Roboto', sans-serif; font-size: 17px; font-weight: 500; color: var(--on-surface); border: 1px solid transparent; border-radius: var(--radius-xs); padding: 2px 6px; background: transparent; outline: none; max-width: 260px; }
+#documentNameInput { font-size: 17px; font-weight: 500; color: var(--on-surface); border: 1px solid transparent; border-radius: var(--radius-xs); padding: 2px 6px; background: transparent; outline: none; max-width: 260px; }
 #documentNameInput:hover { border-color: var(--surface-border); }
 #documentNameInput:focus { border-color: var(--g-blue); background: #ffffff; }
 .save-status { font-size: 11px; color: var(--on-surface-subtle); }
@@ -469,7 +1038,7 @@ body {
 .g-dropdown-divider { height: 1px; background: var(--surface-border); margin: 4px 0; }
 
 .header-right { display: flex; align-items: center; gap: 10px; }
-.g-btn-primary, .g-btn-outlined { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; border-radius: var(--radius-pill); font-family: 'Google Sans', 'Roboto', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+.g-btn-primary, .g-btn-outlined { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; border-radius: var(--radius-pill); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
 .g-btn-primary { background: var(--g-blue); color: #ffffff; border: none; }
 .g-btn-primary:hover:not(:disabled) { background: var(--g-blue-hover); }
 .g-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -485,7 +1054,7 @@ body {
 .tool-btn:hover { background: var(--surface-active); color: var(--on-surface); }
 .tool-btn.active { background: var(--g-blue-container); color: var(--g-blue-hover); }
 .tool-btn .material-symbols-outlined { font-size: 20px; }
-.g-select { height: 32px; border: none; background: transparent; color: var(--on-surface); font-size: 13px; padding: 0 8px; border-radius: var(--radius-sm); cursor: pointer; outline: none; }
+.g-select { height: 32px; border: none; background: transparent; color: var(--on-surface); font-size: 13px; font-family: var(--font-main) !important; padding: 0 8px; border-radius: var(--radius-sm); cursor: pointer; outline: none; }
 .font-size-stepper { display: flex; align-items: center; border: 1px solid var(--surface-border); border-radius: var(--radius-sm); height: 28px; padding: 0 2px; }
 .stepper-btn { background: transparent; border: none; width: 22px; height: 100%; cursor: pointer; font-size: 14px; font-weight: bold; color: var(--on-surface-variant); }
 #fontSizeInput, #lineWeightInput { border: none; background: transparent; text-align: center; font-size: 13px; font-weight: 500; outline: none; width: 32px; }
@@ -546,7 +1115,6 @@ body {
   .home-brand-title { display: none; }
   .tools-category-banner h1 { font-size: 20px; }
   
-  /* Exactamente 3 columnas en móvil como en la captura de iLovePDF */
   .tools-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
@@ -563,6 +1131,18 @@ body {
   }
   .tool-badge-icon .material-symbols-outlined { font-size: 24px; }
   .tool-card-title { font-size: 12px; }
+
+  .choice-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .draggable-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .tool-dropzone.compact-mode {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
 
   .ios-bottom-pill-nav {
     width: calc(100% - 24px);
