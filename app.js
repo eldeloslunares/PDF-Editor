@@ -1126,7 +1126,7 @@ function setupHeaderEvents() {
     const file = e.target.files[0];
     if (!file) return;
     const arrayBuffer = await file.arrayBuffer();
-    AppState.fileName = file.name.replace(/\.pdf$/i, '');
+    AppState.fileName = file.name.replace(/\.pdf\$/i, '');
     DOM.documentNameInput.value = AppState.fileName;
     await loadPdfFromBuffer(new Uint8Array(arrayBuffer));
   });
