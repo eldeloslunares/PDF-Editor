@@ -55,7 +55,7 @@
 
       <div class="home-search-bar">
         <span class="material-symbols-outlined">search</span>
-        <input type="text" id="toolSearchInput" placeholder="Buscar herramienta (ej. Fusionar, Dividir, Word, Excel, OCR)...">
+        <input type="text" id="toolSearchInput" placeholder="Buscar herramienta (ej. Unir, Word, OCR, Firmar)...">
       </div>
 
       <div class="home-header-actions">
@@ -114,7 +114,7 @@
           <div class="setting-row">
             <div>
               <strong>Idioma del motor OCR (Tesseract.js)</strong>
-              <p style="font-size:13px; color:#5f6368;">Idiomas utilizados al reconocer texto en PDFs escaneados</p>
+              <p>Idiomas utilizados al reconocer texto en PDFs escaneados</p>
             </div>
             <select id="settingOcrLang" class="g-select-bordered">
               <option value="spa+eng">Español + Inglés</option>
@@ -125,7 +125,7 @@
           <div class="setting-row">
             <div>
               <strong>Calidad de renderizado por defecto</strong>
-              <p style="font-size:13px; color:#5f6368;">Afecta la nitidez al convertir PDF a imágenes o comprimir</p>
+              <p>Afecta la nitidez al convertir PDF a imágenes o comprimir</p>
             </div>
             <select id="settingRenderQuality" class="g-select-bordered">
               <option value="1.5">Estándar (Equilibrado)</option>
@@ -384,18 +384,16 @@
         <!-- Zona de carga de archivos -->
         <div class="tool-dropzone" id="toolDropzone">
           <span class="material-symbols-outlined dropzone-icon">cloud_upload</span>
-          <div class="dropzone-text-wrap">
-            <h3 id="dropzonePromptText">Selecciona o arrastra tus archivos aquí</h3>
-            <p id="dropzoneAcceptedFormats">Formatos soportados: PDF</p>
-          </div>
+          <h3 id="dropzonePromptText">Selecciona o arrastra tus archivos aquí</h3>
+          <p id="dropzoneAcceptedFormats">Formatos soportados: PDF</p>
           <input type="file" id="toolFileInput" style="display: none;">
           <button class="g-btn-primary" id="btnSelectToolFiles">
             <span class="material-symbols-outlined">add</span>
-            <span id="btnSelectFilesLabel">Seleccionar archivos</span>
+            Seleccionar archivos
           </button>
         </div>
 
-        <!-- Lista o Tarjetas Arrastrables de archivos cargados -->
+        <!-- Lista de archivos cargados -->
         <div id="toolSelectedFilesList" class="tool-files-list"></div>
 
         <!-- Opciones dinámicas según la herramienta elegida -->
@@ -403,14 +401,11 @@
       </div>
 
       <div class="tool-modal-footer">
-        <span class="footer-left-hint" id="modalFooterHint">100% privado en tu navegador</span>
-        <div class="footer-right-btns">
-          <button class="g-btn-outlined" id="btnCancelToolModal">Cancelar</button>
-          <button class="g-btn-primary" id="btnExecuteToolAction" disabled>
-            <span class="material-symbols-outlined">bolt</span>
-            <span id="btnExecuteToolText">Procesar y Descargar</span>
-          </button>
-        </div>
+        <button class="g-btn-outlined" id="btnCancelToolModal">Cancelar</button>
+        <button class="g-btn-primary" id="btnExecuteToolAction" disabled>
+          <span class="material-symbols-outlined">bolt</span>
+          <span id="btnExecuteToolText">Procesar y Descargar</span>
+        </button>
       </div>
     </div>
   </div>
